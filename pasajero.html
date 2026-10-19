@@ -7,17 +7,21 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: Arial, sans-serif; display: flex; flex-direction: column; height: 100vh; background: #f4f6f7; }
-        header { background: #2c3e50; color: white; padding: 15px 20px; font-size: 18px; font-weight: bold; }
+        header { background: #2c3e50; color: white; padding: 15px 20px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
         .panel { padding: 15px; background: #ffffff; border-bottom: 2px solid #ddd; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
         input { padding: 8px 12px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
         button { background: #2980b9; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         button:hover { background: #2471a3; }
+        #distanciaBadge { background: #e74c3c; color: white; padding: 6px 12px; border-radius: 20px; font-size: 14px; font-weight: bold; display: none; }
         #map { flex-grow: 1; width: 100%; }
     </style>
 </head>
 <body>
 
-    <header>📍 Seguimiento de Viaje en Vivo</header>
+    <header>
+        <span>📍 Seguimiento de Viaje en Vivo</span>
+        <div id="distanciaBadge">🚗 Distancia: Calculando...</div>
+    </header>
 
     <div class="panel">
         <strong>Ingresa tu ID de Viaje:</strong>
@@ -73,6 +77,18 @@
             iconSize: [25, 41], iconAnchor: [12, 41]
         });
 
+        // Función matemática para calcular distancia en metros entre dos puntos GPS
+        function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // Radio de la tierra en metros
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c; // Distancia en metros
+        }
+
         document.getElementById('btnSeguirPasajero').addEventListener('click', async () => {
             const viajeId = document.getElementById('pasViajeId').value.trim();
             if (!viajeId) { alert("Ingresa el ID del viaje."); return; }
@@ -84,30 +100,44 @@
             }
 
             alert(`Conectando al seguimiento de: ${viajeId}`);
+            document.getElementById('distanciaBadge').style.display = 'block';
 
             onValue(ref(db, 'viajes/' + viajeId), (snapshotLive) => {
                 const data = snapshotLive.val();
                 if (data) {
                     const { origenLat, origenLng, destLat, destLng, conductorLat, conductorLng, origen, destino, conductor, estado } = data;
                     
-                    // 1. Mostrar la ubicación actual del pasajero (Origen fijo verde)
+                    // 1. Mostrar ubicación del Pasajero (Origen fijo verde)
                     if (origenLat && origenLng && !markerOrigen) {
                         markerOrigen = L.marker([origenLat, origenLng], { icon: iconoOrigenVerde }).addTo(map).bindPopup(`<b>TU UBICACIÓN (Origen):</b> ${origen}`);
                     }
 
-                    // 2. Mostrar el destino final en rojo para referencia del pasajero
+                    // 2. Mostrar Destino Fijo (Rojo)
                     if (destLat && destLng && !markerDestino) {
                         markerDestino = L.marker([destLat, destLng], { icon: iconoDestinoRojo }).addTo(map).bindPopup(`<b>DESTINO:</b> ${destino}`);
                     }
 
-                    // 3. Mostrar la ubicación en tiempo real del conductor y la línea de trayecto hacia el pasajero
+                    // 3. Mostrar Auto del Conductor y calcular distancia en vivo
                     if (conductorLat && conductorLng) {
                         const posAuto = [conductorLat, conductorLng];
 
+                        // Calcular metros respecto al origen del pasajero si existe
+                        let textoDistancia = "";
+                        if (origenLat && origenLng) {
+                            const metros = calcularDistanciaMetros(conductorLat, conductorLng, origenLat, origenLng);
+                            if (metros < 1000) {
+                                textoDistancia = `🚗 Distancia: ${Math.round(metros)} metros`;
+                            } else {
+                                textoDistancia = `🚗 Distancia: ${(metros / 1000).toFixed(2)} km`;
+                            }
+                            document.getElementById('distanciaBadgeinnerText' || 'distanciaBadge').innerText = textoDistancia;
+                        }
+
                         if (!markerConductor) {
-                            markerConductor = L.marker(posAuto, { icon: iconoAuto }).addTo(map).bindPopup(`Conductor: ${conductor}<br>Estado: ${estado}`).openPopup();
+                            markerConductor = L.marker(posAuto, { icon: iconoAuto }).addTo(map).bindPopup(`Conductor: ${conductor}<br>Estado: ${estado}<br>${textoDistancia}`).openPopup();
                         } else {
                             markerConductor.setLatLng(posAuto);
+                            markerConductor.bindPopup(`Conductor: ${conductor}<br>Estado: ${estado}<br>${textoDistancia}`);
                         }
 
                         if (origenLat && origenLng) {
