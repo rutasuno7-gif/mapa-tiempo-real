@@ -18,7 +18,7 @@
 </head>
 <body>
 
-    <header>🚗 Panel de Conductor - Ruta Asignada</header>
+    <header>🚗 Panel de Conductor - Transmisión en Vivo</header>
 
     <div class="panel">
         <strong>Ingresa tu ID de Viaje:</strong>
@@ -89,39 +89,48 @@
 
             const datosViaje = snapshot.val();
             viajeActualId = viajeId;
-            alert("¡ID válido! Cargando origen y destino en el mapa...");
+            alert("¡ID válido! Conectando GPS y cargando ruta...");
 
-            // Dibujar Origen en verde
+            // 1. Mostrar Inicio (Origen) en Verde
             if (datosViaje.origenLat && datosViaje.origenLng) {
-                markerOrigen = L.marker([datosViaje.origenLat, datosViaje.origenLng], { icon: iconoOrigenVerde }).addTo(map).bindPopup(`<b>INICIO (Origen):</b> ${datosViaje.origen}`);
+                markerOrigen = L.marker([datosViaje.origenLat, datosViaje.origenLng], { icon: iconoOrigenVerde })
+                    .addTo(map)
+                    .bindPopup(`<b>INICIO (Origen):</b> ${datosViaje.origen}`);
             }
 
-            // Dibujar Destino en rojo
+            // 2. Mostrar Término (Destino) en Rojo
             if (datosViaje.destLat && datosViaje.destLng) {
-                markerDestino = L.marker([datosViaje.destLat, datosViaje.destLng], { icon: iconoDestinoRojo }).addTo(map).bindPopup(`<b>TÉRMINO (Destino):</b> ${datosViaje.destino}`);
+                markerDestino = L.marker([datosViaje.destLat, datosViaje.destLng], { icon: iconoDestinoRojo })
+                    .addTo(map)
+                    .bindPopup(`<b>TÉRMINO (Destino):</b> ${datosViaje.destino}`);
             }
             
+            // Cambiar estado a En curso en Firebase
             set(ref(db, 'viajes/' + viajeId + '/estado'), 'En curso');
 
             document.getElementById('btnIniciarConductor').style.display = 'none';
             document.getElementById('btnFinalizarConductor').style.display = 'inline-block';
             document.getElementById('condViajeId').disabled = true;
 
+            // 3. Activar GPS en tiempo real para transmitir la posición del auto
             if ("geolocation" in navigator) {
                 watchId = navigator.geolocation.watchPosition((pos) => {
                     const latGPS = pos.coords.latitude;
                     const lngGPS = pos.coords.longitude;
                     const posAuto = [latGPS, lngGPS];
 
+                    // Guardar coordenadas de transmisión en vivo para el pasajero
                     set(ref(db, 'viajes/' + viajeId + '/conductorLat'), latGPS);
                     set(ref(db, 'viajes/' + viajeId + '/conductorLng'), lngGPS);
 
+                    // Actualizar o crear el icono del auto en el mapa del conductor
                     if (!markerConductor) {
                         markerConductor = L.marker(posAuto, { icon: iconoAuto }).addTo(map).bindPopup("Mi ubicación actual").openPopup();
                     } else {
                         markerConductor.setLatLng(posAuto);
                     }
 
+                    // Trazar línea azul desde la posición actual del auto hasta el destino final
                     if (datosViaje.destLat && datosViaje.destLng) {
                         const destCoords = [datosViaje.destLat, datosViaje.destLng];
                         if (!polylineRuta) {
