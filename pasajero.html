@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pasajero - Seguimiento de Ruta</title>
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: Arial, sans-serif; display: flex; flex-direction: column; height: 100vh; background: #f4f6f7; }
@@ -28,7 +27,6 @@
 
     <div id="map"></div>
 
-    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script type="module">
@@ -63,14 +61,12 @@
             iconAnchor: [17, 17]
         });
 
-        // Icono verde personalizado para el origen
         const iconoOrigenVerde = L.icon({
             iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
             shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
             iconSize: [25, 41], iconAnchor: [12, 41]
         });
 
-        // Icono rojo personalizado para el destino
         const iconoDestinoRojo = L.icon({
             iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
             shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
@@ -92,20 +88,16 @@
             onValue(ref(db, 'viajes/' + viajeId), (snapshotLive) => {
                 const data = snapshotLive.val();
                 if (data) {
-                    const { lat, lng, destLat, destLng, conductorLat, conductorLng, origen, destino, conductor, estado } = data;
+                    const { origenLat, origenLng, destLat, destLng, conductorLat, conductorLng, origen, destino, conductor, estado } = data;
                     
-                    // 1. Dibujar Origen Fijo (Verde)
-                    if (lat && lng) {
-                        if (!markerOrigen) {
-                            markerOrigen = L.marker([lat, lng], { icon: iconoOrigenVerde }).addTo(map).bindPopup(`<b>ORIGEN:</b> ${origen}`);
-                        }
+                    // 1. Dibujar Origen Fijo (Verde) usando origenLat / origenLng
+                    if (origenLat && origenLng && !markerOrigen) {
+                        markerOrigen = L.marker([origenLat, origenLng], { icon: iconoOrigenVerde }).addTo(map).bindPopup(`<b>ORIGEN:</b> ${origen}`);
                     }
 
                     // 2. Dibujar Destino Fijo (Rojo)
-                    if (destLat && destLng) {
-                        if (!markerDestino) {
-                            markerDestino = L.marker([destLat, destLng], { icon: iconoDestinoRojo }).addTo(map).bindPopup(`<b>DESTINO:</b> ${destino}`);
-                        }
+                    if (destLat && destLng && !markerDestino) {
+                        markerDestino = L.marker([destLat, destLng], { icon: iconoDestinoRojo }).addTo(map).bindPopup(`<b>DESTINO:</b> ${destino}`);
                     }
 
                     // 3. Dibujar Auto del Conductor y línea de ruta en tiempo real
@@ -128,9 +120,8 @@
                         }
 
                         map.setView(posAuto, 14);
-                    } else if (lat && lng) {
-                        // Si el chofer aún no inicia el GPS, centramos el mapa en el origen
-                        map.setView([lat, lng], 13);
+                    } else if (origenLat && origenLng) {
+                        map.setView([origenLat, origenLng], 13);
                     }
                 }
             });
