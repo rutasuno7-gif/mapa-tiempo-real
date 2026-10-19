@@ -192,7 +192,6 @@
                         const r = data[id];
                         tbody.innerHTML += `<tr><td><b>${id}</b></td><td>${r.origen}</td><td>${r.destino}</td><td>${r.conductor}</td><td>${r.estado}</td><td><button class="eliminar" onclick="eliminarRuta('${id}')">Eliminar</button></td></tr>`;
 
-                        // Mostrar todos los ID asignados con su conductor en el mapa del admin
                         if (r.origenLat && r.origenLng) {
                             const iconoOrigenVerde = L.icon({
                                 iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
@@ -200,7 +199,7 @@
                                 iconSize: [25, 41], iconAnchor: [12, 41]
                             });
                             const marker = L.marker([r.origenLat, r.origenLng], { icon: iconoOrigenVerde }).addTo(map)
-                                .bindPopup(`<b>ID:</b> ${id}<br><b>Conductor:</b> ${r.conductor}<br><b>Origen:</b> ${r.origen}`);
+                                .bindPopup(`<b>ID Viaje:</b> ${id}<br><b>Conductor:</b> ${r.conductor}<br><b>Origen:</b> ${r.origen}`);
                             markersMap[id] = marker;
                         }
                     });
