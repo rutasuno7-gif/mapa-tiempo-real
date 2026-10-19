@@ -53,6 +53,13 @@
 
         let markerConductor = null;
         let markerDestino = null;
+        let polylineRuta = null;
+
+        const iconoAuto = L.icon({
+            iconUrl: 'https://cdn-icons-png.flaticon.com/512/741/741407.png',
+            iconSize: [35, 35],
+            iconAnchor: [17, 17]
+        });
 
         document.getElementById('btnSeguirPasajero').addEventListener('click', async () => {
             const viajeId = document.getElementById('pasViajeId').value.trim();
@@ -82,12 +89,24 @@
                     }
 
                     if (lat && lng) {
+                        const posConductor = [lat, lng];
+
                         if (!markerConductor) {
-                            markerConductor = L.marker([lat, lng]).addTo(map).bindPopup(`Conductor: ${conductor}<br>Estado: ${estado}`).openPopup();
+                            markerConductor = L.marker(posConductor, { icon: iconoAuto }).addTo(map).bindPopup(`Conductor: ${conductor}<br>Estado: ${estado}`).openPopup();
                         } else {
-                            markerConductor.setLatLng([lat, lng]);
+                            markerConductor.setLatLng(posConductor);
                         }
-                        map.setView([lat, lng], 14);
+
+                        if (destLat && destLng) {
+                            const destCoords = [destLat, destLng];
+                            if (!polylineRuta) {
+                                polylineRuta = L.polyline([posConductor, destCoords], { color: '#2980b9', weight: 4 }).addTo(map);
+                            } else {
+                                polylineRuta.setLatLngs([posConductor, destCoords]);
+                            }
+                        }
+
+                        map.setView(posConductor, 14);
                     }
                 }
             });
