@@ -108,7 +108,7 @@
         </div>
     </header>
 
-    <!-- LOGIN ADMIN -->
+    <!-- LOGIN ADMIN (Aquí corregido a type="password") -->
     <div id="panel-admin-login" class="panel-rol active">
         <strong>Acceso Administrador:</strong>
         <input type="password" id="adminPasswordInput" placeholder="Ingresa clave (Rutas2026)" />
@@ -208,7 +208,7 @@
 
             set(ref(db, 'viajes/' + viajeId), {
                 origen: origenStr, destino: destinoStr, conductor: conductor || "Sin asignar",
-                lat: coordOrigen.lat, lng: coordOrigen.lng, destLat: coordDestino.lat, destLng: coordDestino.destLng || coordDestino.lng, estado: "Asignado"
+                lat: coordOrigen.lat, lng: coordOrigen.lng, destLat: coordDestino.lat, destLng: coordDestino.lng, estado: "Asignado"
             }).then(() => {
                 alert(`¡Ruta ${viajeId} creada con éxito!`);
                 document.getElementById('adminViajeId').value = '';
