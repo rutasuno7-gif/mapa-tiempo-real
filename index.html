@@ -108,10 +108,10 @@
         </div>
     </header>
 
-    <!-- LOGIN ADMIN -->
+    <!-- LOGIN ADMIN (Asegurado con type="password") -->
     <div id="panel-admin-login" class="panel-rol activo">
         <strong>Acceso Administrador:</strong>
-        <input type="password" id="adminPasswordInput" placeholder="Ingresa clave (Rutas2026)" />
+        <input type="password" id="adminPasswordInput" placeholder="Ingresa clave (Rutas2026)" autocomplete="new-password" />
         <button type="button" class="accion" id="btnLogAdmin">Entrar</button>
     </div>
 
@@ -171,7 +171,7 @@
 
         let todasLasRutasData = {};
 
-        // Botón de Login directo y seguro
+        // Botón de Login
         document.getElementById('btnLogAdmin').addEventListener('click', () => {
             const pass = document.getElementById('adminPasswordInput').value.trim();
             if (pass === "Rutas2026") {
