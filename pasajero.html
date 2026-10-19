@@ -90,17 +90,17 @@
                 if (data) {
                     const { origenLat, origenLng, destLat, destLng, conductorLat, conductorLng, origen, destino, conductor, estado } = data;
                     
-                    // 1. Mostrar Origen Fijo (Verde) en la vista del pasajero
+                    // 1. Mostrar la ubicación actual del pasajero (Origen fijo verde)
                     if (origenLat && origenLng && !markerOrigen) {
-                        markerOrigen = L.marker([origenLat, origenLng], { icon: iconoOrigenVerde }).addTo(map).bindPopup(`<b>TU ORIGEN:</b> ${origen}`);
+                        markerOrigen = L.marker([origenLat, origenLng], { icon: iconoOrigenVerde }).addTo(map).bindPopup(`<b>TU UBICACIÓN (Origen):</b> ${origen}`);
                     }
 
-                    // 2. Mostrar Destino Fijo (Rojo) para referencia del pasajero
+                    // 2. Mostrar el destino final en rojo para referencia del pasajero
                     if (destLat && destLng && !markerDestino) {
                         markerDestino = L.marker([destLat, destLng], { icon: iconoDestinoRojo }).addTo(map).bindPopup(`<b>DESTINO:</b> ${destino}`);
                     }
 
-                    // 3. Mostrar Auto del Conductor en tiempo real (Estilo Uber) y trazar línea hacia el origen/destino
+                    // 3. Mostrar la ubicación en tiempo real del conductor y la línea de trayecto hacia el pasajero
                     if (conductorLat && conductorLng) {
                         const posAuto = [conductorLat, conductorLng];
 
@@ -110,7 +110,6 @@
                             markerConductor.setLatLng(posAuto);
                         }
 
-                        // Línea azul desde el auto hacia el origen de recogida
                         if (origenLat && origenLng) {
                             const origenCoords = [origenLat, origenLng];
                             if (!polylineRuta) {
