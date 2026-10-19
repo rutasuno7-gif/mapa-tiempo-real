@@ -111,7 +111,7 @@
     <!-- LOGIN ADMIN -->
     <div id="panel-admin-login" class="panel-rol active">
         <strong>Acceso Administrador:</strong>
-        <input type="password" id="adminPasswordInput" placeholder="Ingresa clave (Rutas2026)" autocomplete="current-password" />
+        <input type="password" id="adminPasswordInput" placeholder="Ingresa clave (Rutas2026)" />
         <button class="accion" id="btnLogAdmin">Entrar</button>
     </div>
 
@@ -170,7 +170,7 @@
         document.getElementById('btnLogAdmin').addEventListener('click', () => {
             const pass = document.getElementById('adminPasswordInput').value.trim();
             if (pass === "Rutas2026") {
-                document.getElementById('panel-admin-login').classList.remove('active');
+                document.getElementById('panel-admin-login').style.display = 'none';
                 document.getElementById('panel-admin').classList.add('active');
                 cargarRutasAdmin();
             } else {
