@@ -28,7 +28,7 @@
 
     <div id="map"></div>
 
-    <!-- Leaflet JS (OBLIGATORIO PARA QUE SE VEA EL MAPA) -->
+    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script type="module">
@@ -63,6 +63,20 @@
             iconAnchor: [17, 17]
         });
 
+        // Icono verde personalizado para el origen
+        const iconoOrigenVerde = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+            iconSize: [25, 41], iconAnchor: [12, 41]
+        });
+
+        // Icono rojo personalizado para el destino
+        const iconoDestinoRojo = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+            iconSize: [25, 41], iconAnchor: [12, 41]
+        });
+
         document.getElementById('btnSeguirPasajero').addEventListener('click', async () => {
             const viajeId = document.getElementById('pasViajeId').value.trim();
             if (!viajeId) { alert("Ingresa el ID del viaje."); return; }
@@ -80,29 +94,21 @@
                 if (data) {
                     const { lat, lng, destLat, destLng, conductorLat, conductorLng, origen, destino, conductor, estado } = data;
                     
-                    // 1. Mostrar Origen Fijo (Verde)
-                    if (lat && lng && !markerOrigen) {
-                        markerOrigen = L.marker([lat, lng], {
-                            icon: L.icon({
-                                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-                                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-                                iconSize: [25, 41], iconAnchor: [12, 41]
-                            })
-                        }).addTo(map).bindPopup(`<b>ORIGEN:</b> ${origen}`);
+                    // 1. Dibujar u actualizar Origen Fijo (Verde)
+                    if (lat && lng) {
+                        if (!markerOrigen) {
+                            markerOrigen = L.marker([lat, lng], { icon: iconoOrigenVerde }).addTo(map).bindPopup(`<b>ORIGEN:</b> ${origen}`);
+                        }
                     }
 
-                    // 2. Mostrar Destino Fijo (Rojo)
-                    if (destLat && destLng && !markerDestino) {
-                        markerDestino = L.marker([destLat, destLng], {
-                            icon: L.icon({
-                                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-                                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-                                iconSize: [25, 41], iconAnchor: [12, 41]
-                            })
-                        }).addTo(map).bindPopup(`<b>DESTINO:</b> ${destino}`);
+                    // 2. Dibujar u actualizar Destino Fijo (Rojo)
+                    if (destLat && destLng) {
+                        if (!markerDestino) {
+                            markerDestino = L.marker([destLat, destLng], { icon: iconoDestinoRojo }).addTo(map).bindPopup(`<b>DESTINO:</b> ${destino}`);
+                        }
                     }
 
-                    // 3. Mostrar Auto del Conductor en tiempo real y trazar línea hacia el destino
+                    // 3. Dibujar Auto del Conductor y línea de ruta en tiempo real
                     if (conductorLat && conductorLng) {
                         const posAuto = [conductorLat, conductorLng];
 
@@ -122,6 +128,9 @@
                         }
 
                         map.setView(posAuto, 14);
+                    } else if (lat && lng) {
+                        // Si el chofer aún no inicia el GPS, centramos el mapa en el origen
+                        map.setView([lat, lng], 13);
                     }
                 }
             });
