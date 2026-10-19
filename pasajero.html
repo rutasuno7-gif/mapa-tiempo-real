@@ -90,17 +90,17 @@
                 if (data) {
                     const { origenLat, origenLng, destLat, destLng, conductorLat, conductorLng, origen, destino, conductor, estado } = data;
                     
-                    // 1. Dibujar Origen Fijo (Verde) usando origenLat / origenLng
+                    // 1. Mostrar Origen Fijo (Verde) en la vista del pasajero
                     if (origenLat && origenLng && !markerOrigen) {
-                        markerOrigen = L.marker([origenLat, origenLng], { icon: iconoOrigenVerde }).addTo(map).bindPopup(`<b>ORIGEN:</b> ${origen}`);
+                        markerOrigen = L.marker([origenLat, origenLng], { icon: iconoOrigenVerde }).addTo(map).bindPopup(`<b>TU ORIGEN:</b> ${origen}`);
                     }
 
-                    // 2. Dibujar Destino Fijo (Rojo)
+                    // 2. Mostrar Destino Fijo (Rojo) para referencia del pasajero
                     if (destLat && destLng && !markerDestino) {
                         markerDestino = L.marker([destLat, destLng], { icon: iconoDestinoRojo }).addTo(map).bindPopup(`<b>DESTINO:</b> ${destino}`);
                     }
 
-                    // 3. Dibujar Auto del Conductor y línea de ruta en tiempo real
+                    // 3. Mostrar Auto del Conductor en tiempo real (Estilo Uber) y trazar línea hacia el origen/destino
                     if (conductorLat && conductorLng) {
                         const posAuto = [conductorLat, conductorLng];
 
@@ -110,12 +110,13 @@
                             markerConductor.setLatLng(posAuto);
                         }
 
-                        if (destLat && destLng) {
-                            const destCoords = [destLat, destLng];
+                        // Línea azul desde el auto hacia el origen de recogida
+                        if (origenLat && origenLng) {
+                            const origenCoords = [origenLat, origenLng];
                             if (!polylineRuta) {
-                                polylineRuta = L.polyline([posAuto, destCoords], { color: '#2980b9', weight: 4 }).addTo(map);
+                                polylineRuta = L.polyline([posAuto, origenCoords], { color: '#2980b9', weight: 4 }).addTo(map);
                             } else {
-                                polylineRuta.setLatLngs([posAuto, destCoords]);
+                                polylineRuta.setLatLngs([posAuto, origenCoords]);
                             }
                         }
 
