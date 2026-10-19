@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plataforma de Rutas en Tiempo Real</title>
+    <title>Administración - Plataforma de Rutas</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -28,21 +28,14 @@
             justify-content: space-between;
             align-items: center;
         }
-        .roles-nav {
-            display: flex;
-            gap: 10px;
-        }
-        .roles-nav button {
-            background: #34495e;
+        .roles-nav a {
             color: white;
-            border: none;
+            text-decoration: none;
+            background: #34495e;
             padding: 8px 15px;
             border-radius: 4px;
-            cursor: pointer;
+            font-size: 14px;
             font-weight: bold;
-        }
-        .roles-nav button.active {
-            background: #27ae60;
         }
         .panel-rol {
             display: none;
@@ -108,22 +101,21 @@
 <body>
 
     <header>
-        <h2>Gestión de Rutas</h2>
+        <h2>Panel de Administración</h2>
         <div class="roles-nav">
-            <button onclick="cambiarRol('admin')" id="btn-admin" class="active">Admin</button>
-            <button onclick="cambiarRol('conductor')" id="btn-conductor">Conductor</button>
-            <button onclick="cambiarRol('pasajero')" id="btn-pasajero">Pasajero</button>
+            <a href="conductor.html" target="_blank">Ir a Conductor ➔</a>
+            <a href="pasajero.html" target="_blank">Ir a Pasajero ➔</a>
         </div>
     </header>
 
-    <!-- PANEL LOGIN ADMIN -->
+    <!-- LOGIN ADMIN -->
     <div id="panel-admin-login" class="panel-rol active">
         <strong>Acceso Administrador:</strong>
         <input type="password" id="adminPasswordInput" placeholder="Ingresa clave (Rutas2026)" />
         <button class="accion" id="btnLogAdmin">Entrar</button>
     </div>
 
-    <!-- PANEL ADMINISTRADOR (Oculto hasta autenticarse) -->
+    <!-- PANEL ADMINISTRADOR -->
     <div id="panel-admin" class="panel-rol">
         <strong>Crear y Asignar Ruta:</strong>
         <input type="text" id="adminViajeId" placeholder="ID del Viaje (ej. ruta-01)" />
@@ -132,7 +124,7 @@
         <input type="text" id="adminConductor" placeholder="Nombre Conductor" />
         <button class="accion" id="btnGuardarRuta">Guardar y Asignar</button>
         <button class="accion" id="btnExportarExcel" style="background: #27ae60;">Exportar a Excel</button>
-        <div class="hint">💡 <b>Formato de dirección:</b> [Calle/Ciudad], [Comuna/Ciudad], [País] (Ej: Providencia, Santiago, Chile). El ID del viaje será la clave única para el conductor y pasajero.</div>
+        <div class="hint">💡 <b>Formato:</b> [Calle/Ciudad], [Comuna/Ciudad], [País]. El ID de viaje será la clave única para el chofer y cliente.</div>
         
         <div class="admin-table-container">
             <table>
@@ -145,37 +137,16 @@
                         <th>Estado</th>
                     </tr>
                 </thead>
-                <tbody id="tablaRutasBody">
-                    <!-- Se llena dinámicamente -->
-                </tbody>
+                <tbody id="tablaRutasBody"></tbody>
             </table>
         </div>
     </div>
 
-    <!-- PANEL CONDUCTOR -->
-    <div id="panel-conductor" class="panel-rol">
-        <strong>Transmisión de Conductor (Ingresa tu ID de Viaje asignado):</strong>
-        <input type="text" id="condViajeId" placeholder="ID del Viaje (Clave)" />
-        <button class="accion" id="btnIniciarConductor">Validar e Iniciar GPS</button>
-    </div>
-
-    <!-- PANEL PASAJERO -->
-    <div id="panel-pasajero" class="panel-rol">
-        <strong>Seguimiento de Pasajero (Ingresa tu ID de Viaje):</strong>
-        <input type="text" id="pasViajeId" placeholder="ID del Viaje (Clave)" />
-        <button class="accion" id="btnSeguirPasajero">Ver mi Ruta</button>
-    </div>
-
-    <!-- CONTENEDOR DEL MAPA -->
     <div id="map"></div>
 
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-    <!-- Firebase y Lógica -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-        import { getDatabase, ref, set, onValue, get } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBx8q4zbeMNBi5s209ZMNUnF3gKI8MDdc0",
@@ -192,67 +163,29 @@
         const db = getDatabase(app);
 
         const map = L.map('map').setView([-33.4489, -70.6693], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
 
-        let markerConductor = null;
-        let markerOrigen = null;
-        let markerDestino = null;
-        let watchId = null;
         let todasLasRutasData = {};
 
-        // Cambiar pestañas de roles visualmente
-        window.cambiarRol = function(rol) {
-            document.querySelectorAll('.panel-rol').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.roles-nav button').forEach(b => b.classList.remove('active'));
-            
-            document.getElementById('btn-' + rol).classList.add('active');
-
-            if (rol === 'admin') {
-                // Si el admin no se ha logueado, mostramos el login de admin
-                const panelAdminActual = document.getElementById('panel-admin');
-                if (!panelAdminActual.classList.contains('active-logged')) {
-                    document.getElementById('panel-admin-login').classList.add('active');
-                } else {
-                    panelAdminActual.classList.add('active');
-                }
-            } else {
-                document.getElementById('panel-' + rol).classList.add('active');
-            }
-        }
-
-        // LOGIN ADMIN
         document.getElementById('btnLogAdmin').addEventListener('click', () => {
             const pass = document.getElementById('adminPasswordInput').value.trim();
             if (pass === "Rutas2026") {
                 document.getElementById('panel-admin-login').classList.remove('active');
-                const panelAdmin = document.getElementById('panel-admin');
-                panelAdmin.classList.add('active');
-                panelAdmin.classList.add('active-logged');
+                document.getElementById('panel-admin').classList.add('active');
                 cargarRutasAdmin();
             } else {
                 alert("Clave de Administrador incorrecta.");
             }
         });
 
-        // Función para geocodificar direcciones usando Nominatim (OpenStreetMap)
         async function obtenerCoordenadas(direccion) {
             try {
-                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion)}`;
-                const response = await fetch(url);
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion)}`);
                 const data = await response.json();
-                if (data && data.length > 0) {
-                    return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-                }
-                return null;
-            } catch (e) {
-                return null;
-            }
+                return data.length > 0 ? { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) } : null;
+            } catch (e) { return null; }
         }
 
-        // 1. ADMIN: Guardar ruta en Firebase
         document.getElementById('btnGuardarRuta').addEventListener('click', async () => {
             const viajeId = document.getElementById('adminViajeId').value.trim();
             const origenStr = document.getElementById('adminOrigen').value.trim();
@@ -260,40 +193,31 @@
             const conductor = document.getElementById('adminConductor').value.trim();
 
             if (!viajeId || !origenStr || !destinoStr) {
-                alert("Completa los campos obligatorios del viaje.");
+                alert("Completa los campos obligatorios.");
                 return;
             }
 
-            alert("Buscando coordenadas de origen y destino en el mapa...");
+            alert("Buscando coordenadas...");
             const coordOrigen = await obtenerCoordenadas(origenStr);
             const coordDestino = await obtenerCoordenadas(destinoStr);
 
             if (!coordOrigen || !coordDestino) {
-                alert("No se pudieron encontrar una o ambas direcciones. Verifica el formato (ej: Providencia, Santiago, Chile).");
+                alert("No se encontraron una o ambas direcciones. Verifica el formato.");
                 return;
             }
 
             set(ref(db, 'viajes/' + viajeId), {
-                origen: origenStr,
-                destino: destinoStr,
-                conductor: conductor || "Sin asignar",
-                lat: coordOrigen.lat,
-                lng: coordOrigen.lng,
-                destLat: coordDestino.lat,
-                destLng: coordDestino.lng,
-                estado: "Asignado"
+                origen: origenStr, destino: destinoStr, conductor: conductor || "Sin asignar",
+                lat: coordOrigen.lat, lng: coordOrigen.lng, destLat: coordDestino.lat, destLng: coordDestino.destLng || coordDestino.lng, estado: "Asignado"
             }).then(() => {
-                alert(`¡Ruta ${viajeId} creada con éxito! Ya puede ser usada por el conductor y pasajero.`);
+                alert(`¡Ruta ${viajeId} creada con éxito!`);
                 document.getElementById('adminViajeId').value = '';
                 document.getElementById('adminOrigen').value = '';
                 document.getElementById('adminDestino').value = '';
                 document.getElementById('adminConductor').value = '';
-            }).catch(err => {
-                alert("Error al guardar: " + err.message);
             });
         });
 
-        // Cargar rutas en tabla de admin en tiempo real
         function cargarRutasAdmin() {
             onValue(ref(db, 'viajes'), (snapshot) => {
                 const data = snapshot.val();
@@ -303,9 +227,7 @@
                     todasLasRutasData = data;
                     Object.keys(data).forEach(id => {
                         const r = data[id];
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `<td><b>${id}</b></td><td>${r.origen}</td><td>${r.destino}</td><td>${r.conductor}</td><td>${r.estado}</td>`;
-                        tbody.appendChild(tr);
+                        tbody.innerHTML += `<tr><td><b>${id}</b></td><td>${r.origen}</td><td>${r.destino}</td><td>${r.conductor}</td><td>${r.estado}</td></tr>`;
                     });
                 } else {
                     todasLasRutasData = {};
@@ -314,113 +236,16 @@
             });
         }
 
-        // Exportar a Excel
         document.getElementById('btnExportarExcel').addEventListener('click', () => {
-            if (Object.keys(todasLasRutasData).length === 0) {
-                alert("No hay datos para exportar.");
-                return;
-            }
+            if (Object.keys(todasLasRutasData).length === 0) { alert("No hay datos."); return; }
             const arrayDatos = Object.keys(todasLasRutasData).map(id => ({
-                "ID Viaje": id,
-                "Origen": todasLasRutasData[id].origen,
-                "Destino": todasLasRuntasData?.[id]?.destino || todasLasRutasData[id].destino,
-                "Conductor": todasLasRutasData[id].conductor,
-                "Estado": todasLasRutasData[id].estado
+                "ID Viaje": id, "Origen": todasLasRutasData[id].origen, "Destino": todasLasRutasData[id].destino,
+                "Conductor": todasLasRutasData[id].conductor, "Estado": todasLasRutasData[id].estado
             }));
-
-            const worksheet = XLSX.utils.json_to_sheet(arrayDatos);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Rutas");
-            XLSX.writeFile(workbook, "Reporte_Rutas.xlsx");
-        });
-
-        // 2. CONDUCTOR: Validar ID de viaje y transmitir GPS
-        document.getElementById('btnIniciarConductor').addEventListener('click', async () => {
-            const viajeId = document.getElementById('condViajeId').value.trim();
-            if (!viajeId) {
-                alert("Ingresa el ID del viaje.");
-                return;
-            }
-
-            // Verificar si el viaje existe en Firebase antes de iniciar
-            const snapshot = await get(ref(db, 'viajes/' + viajeId));
-            if (!snapshot.exists()) {
-                alert("El ID de viaje ingresado no existe. El administrador debe crearlo primero.");
-                return;
-            }
-
-            alert("¡ID válido! Transmisión de GPS iniciada.");
-            if ("geolocation" in navigator) {
-                watchId = navigator.geolocation.watchPosition((pos) => {
-                    const lat = pos.coords.latitude;
-                    const lng = pos.coords.longitude;
-
-                    set(ref(db, 'viajes/' + viajeId + '/lat'), lat);
-                    set(ref(db, 'viajes/' + viajeId + '/lng'), lng);
-                    set(ref(db, 'viajes/' + viajeId + '/estado'), 'En curso');
-
-                    if (!markerConductor) {
-                        markerConductor = L.marker([lat, lng]).addTo(map).bindPopup("Mi posición (Conductor)").openPopup();
-                    } else {
-                        markerConductor.setLatLng([lat, lng]);
-                    }
-                    map.setView([lat, lng], 15);
-                }, (err) => {
-                    alert("Error de GPS: " + err.message);
-                }, { enableHighAccuracy: true });
-            } else {
-                alert("Tu dispositivo no soporta geolocalización.");
-            }
-        });
-
-        // 3. PASAJERO: Validar ID de viaje y ver seguimiento
-        document.getElementById('btnSeguirPasajero').addEventListener('click', async () => {
-            const viajeId = document.getElementById('pasViajeId').value.trim();
-            if (!viajeId) {
-                alert("Ingresa el ID del viaje.");
-                return;
-            }
-
-            // Verificar si el viaje existe en Firebase antes de conectar
-            const snapshot = await get(ref(db, 'viajes/' + viajeId));
-            if (!snapshot.exists()) {
-                alert("El ID de viaje ingresado no existe o es incorrecto.");
-                return;
-            }
-
-            if (watchId) navigator.geolocation.clearWatch(watchId);
-            alert(`Conectando al viaje: ${viajeId}`);
-
-            onValue(ref(db, 'viajes/' + viajeId), (snapshotLive) => {
-                const data = snapshotLive.val();
-                if (data) {
-                    const { lat, lng, destLat, destLng, destino, conductor } = data;
-                    
-                    // Mostrar marcador de Destino (Rojo)
-                    if (destLat && destLng) {
-                        if (!markerDestino) {
-                            markerDestino = L.marker([destLat, destLng], {
-                                icon: L.icon({
-                                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-                                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-                                    iconSize: [25, 41],
-                                    iconAnchor: [12, 41]
-                                })
-                            }).addTo(map).bindPopup(`<b>DESTINO:</b> ${destino}`);
-                        }
-                    }
-
-                    // Mostrar marcador del Conductor
-                    if (lat && lng) {
-                        if (!markerConductor) {
-                            markerConductor = L.marker([lat, lng]).addTo(map).bindPopup(`Conductor: ${conductor}<br>Destino: ${destino}`).openPopup();
-                        } else {
-                            markerConductor.setLatLng([lat, lng]);
-                        }
-                        map.setView([lat, lng], 14);
-                    }
-                }
-            });
+            const ws = XLSX.utils.json_to_sheet(arrayDatos);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Rutas");
+            XLSX.writeFile(wb, "Reporte_Rutas.xlsx");
         });
     </script>
 </body>
