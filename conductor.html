@@ -65,6 +65,18 @@
             iconAnchor: [17, 17]
         });
 
+        const iconoOrigenVerde = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+            iconSize: [25, 41], iconAnchor: [12, 41]
+        });
+
+        const iconoDestinoRojo = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+            iconSize: [25, 41], iconAnchor: [12, 41]
+        });
+
         document.getElementById('btnIniciarConductor').addEventListener('click', async () => {
             const viajeId = document.getElementById('condViajeId').value.trim();
             if (!viajeId) { alert("Ingresa el ID del viaje."); return; }
@@ -77,26 +89,14 @@
 
             const datosViaje = snapshot.val();
             viajeActualId = viajeId;
-            alert("¡ID válido! Cargando origen y destino...");
+            alert("¡ID válido! Cargando ruta en el mapa...");
 
             if (datosViaje.origenLat && datosViaje.origenLng) {
-                markerOrigen = L.marker([datosViaje.origenLat, datosViaje.origenLng], {
-                    icon: L.icon({
-                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-                        iconSize: [25, 41], iconAnchor: [12, 41]
-                    })
-                }).addTo(map).bindPopup(`<b>ORIGEN:</b> ${datosViaje.origen}`);
+                markerOrigen = L.marker([datosViaje.origenLat, datosViaje.origenLng], { icon: iconoOrigenVerde }).addTo(map).bindPopup(`<b>ORIGEN:</b> ${datosViaje.origen}`);
             }
 
             if (datosViaje.destLat && datosViaje.destLng) {
-                markerDestino = L.marker([datosViaje.destLat, datosViaje.destLng], {
-                    icon: L.icon({
-                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-                        iconSize: [25, 41], iconAnchor: [12, 41]
-                    })
-                }).addTo(map).bindPopup(`<b>DESTINO:</b> ${datosViaje.destino}`);
+                markerDestino = L.marker([datosViaje.destLat, datosViaje.destLng], { icon: iconoDestinoRojo }).addTo(map).bindPopup(`<b>DESTINO:</b> ${datosViaje.destino}`);
             }
             
             set(ref(db, 'viajes/' + viajeId + '/estado'), 'En curso');
@@ -111,7 +111,6 @@
                     const lngGPS = pos.coords.longitude;
                     const posAuto = [latGPS, lngGPS];
 
-                    // Transmitimos a nodos exclusivos del conductor
                     set(ref(db, 'viajes/' + viajeId + '/conductorLat'), latGPS);
                     set(ref(db, 'viajes/' + viajeId + '/conductorLng'), lngGPS);
 
