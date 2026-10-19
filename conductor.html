@@ -89,12 +89,14 @@
 
             const datosViaje = snapshot.val();
             viajeActualId = viajeId;
-            alert("¡ID válido! Marcando inicio y término en el mapa...");
+            alert("¡ID válido! Cargando origen y destino en el mapa...");
 
+            // Dibujar Origen en verde
             if (datosViaje.origenLat && datosViaje.origenLng) {
                 markerOrigen = L.marker([datosViaje.origenLat, datosViaje.origenLng], { icon: iconoOrigenVerde }).addTo(map).bindPopup(`<b>INICIO (Origen):</b> ${datosViaje.origen}`);
             }
 
+            // Dibujar Destino en rojo
             if (datosViaje.destLat && datosViaje.destLng) {
                 markerDestino = L.marker([datosViaje.destLat, datosViaje.destLng], { icon: iconoDestinoRojo }).addTo(map).bindPopup(`<b>TÉRMINO (Destino):</b> ${datosViaje.destino}`);
             }
