@@ -38,11 +38,11 @@
         </div>
     </header>
 
-    <!-- LOGIN ADMIN (Estructura limpia para ocultar clave) -->
+    <!-- LOGIN ADMIN -->
     <div id="panel-admin-login" class="panel-rol activo" style="flex-direction: column; align-items: flex-start;">
         <strong>Acceso Administrador:</strong>
         <div class="login-box">
-            <input type="password" id="adminPasswordInput" placeholder="Ingrese contraseña (Rutas2026)">
+            <input type="password" id="adminPasswordInput" placeholder="Ingrese clave">
             <button class="accion" id="btnLogAdmin">Entrar</button>
         </div>
     </div>
@@ -192,8 +192,15 @@
                         const r = data[id];
                         tbody.innerHTML += `<tr><td><b>${id}</b></td><td>${r.origen}</td><td>${r.destino}</td><td>${r.conductor}</td><td>${r.estado}</td><td><button class="eliminar" onclick="eliminarRuta('${id}')">Eliminar</button></td></tr>`;
 
+                        // Mostrar todos los ID asignados con su conductor en el mapa del admin
                         if (r.origenLat && r.origenLng) {
-                            const marker = L.marker([r.origenLat, r.origenLng]).addTo(map).bindPopup(`<b>Ruta:</b> ${id}<br><b>Conductor:</b> ${r.conductor}`);
+                            const iconoOrigenVerde = L.icon({
+                                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+                                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+                                iconSize: [25, 41], iconAnchor: [12, 41]
+                            });
+                            const marker = L.marker([r.origenLat, r.origenLng], { icon: iconoOrigenVerde }).addTo(map)
+                                .bindPopup(`<b>ID:</b> ${id}<br><b>Conductor:</b> ${r.conductor}<br><b>Origen:</b> ${r.origen}`);
                             markersMap[id] = marker;
                         }
                     });
