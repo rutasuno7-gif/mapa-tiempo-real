@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plataforma de Rutas en Tiempo Real</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background: #f4f6f7;
+        }
+        header {
+            background: #2c3e50;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .roles-nav {
+            display: flex;
+            gap: 10px;
+        }
+        .roles-nav button {
+            background: #34495e;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .roles-nav button.active {
+            background: #27ae60;
+        }
+        .panel-rol {
+            display: none;
+            padding: 15px;
+            background: #ffffff;
+            border-bottom: 2px solid #ddd;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .panel-rol.active {
+            display: flex;
+        }
+        input, button.accion {
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+        button.accion {
+            background: #2980b9;
+            color: white;
+            cursor: pointer;
+            border: none;
+            font-weight: bold;
+        }
+        button.accion:hover {
+            background: #2471a3;
+        }
+        #map {
+            flex-grow: 1;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h2>Gestión de Rutas</h2>
+        <div class="roles-nav">
+            <button onclick="cambiarRol('admin')" id="btn-admin" class="active">Admin</button>
+            <button onclick="cambiarRol('conductor')" id="btn-conductor">Conductor</button>
+            <button onclick="cambiarRol('pasajero')" id="btn-pasajero">Pasajero</button>
+        </div>
+    </header>
+
+    <!-- PANEL ADMINISTRADOR -->
+    <div id="panel-admin" class="panel-rol active">
+        <strong>Crear y Asignar Ruta:</strong>
+        <input type="text" id="adminViajeId" placeholder="ID del Viaje (ej. ruta-01)" />
+        <input type="text" id="adminOrigen" placeholder="Origen" />
+        <input type="text" id="adminDestino" placeholder="Destino" />
+        <input type="text" id="adminConductor" placeholder="Nombre Conductor" />
+        <button class="accion" id="btnGuardarRuta">Guardar y Asignar</button>
+    </div>
+
+    <!-- PANEL CONDUCTOR -->
+    <div id="panel-conductor" class="panel-rol">
+        <strong>Transmisión de Conductor:</strong>
+        <input type="text" id="condViajeId" placeholder="ID de tu Viaje asignado" />
+        <button class="accion" id="btnIniciarConductor">Iniciar mi Ruta (GPS)</button>
+    </div>
+
+    <!-- PANEL PASAJERO -->
+    <div id="panel-pasajero" class="panel-rol">
+        <strong>Seguimiento de Pasajero:</strong>
+        <input type="text" id="pasViajeId" placeholder="Ingresa tu ID de Viaje" />
+        <button class="accion" id="btnSeguirPasajero">Ver mi Ruta</button>
+    </div>
+
+    <!-- CONTENEDOR DEL MAPA -->
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Firebase y Lógica -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+        // Tus credenciales oficiales de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBx8q4zbeMNBi5s209ZMNUnF3gKI8MDdc0",
+            authDomain: "rutas-234e4.firebaseapp.com",
+            databaseURL: "https://rutas-234e4-default-rtdb.firebaseio.com",
+            projectId: "rutas-234e4",
+            storageBucket: "rutas-234e4.firebasestorage.app",
+            messagingSenderId: "169559501428",
+            appId: "1:169559501428:web:419b64babc56d1da6eff21",
+            measurementId: "G-GDNE6V9783"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Mapa centrado en Chile
+        const map = L.map('map').setView([-33.4489, -70.6693], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        let marker = null;
+        let watchId = null;
+
+        // Cambiar pestañas de roles visualmente
+        window.cambiarRol = function(rol) {
+            document.querySelectorAll('.panel-rol').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.roles-nav button').forEach(b => b.classList.remove('active'));
+            
+            document.getElementById('panel-' + rol).classList.add('active');
+            document.getElementById('btn-' + rol).classList.add('active');
+        }
+
+        // 1. ADMIN: Guardar ruta en Firebase
+        document.getElementById('btnGuardarRuta').addEventListener('click', () => {
+            const viajeId = document.getElementById('adminViajeId').value.trim();
+            const origen = document.getElementById('adminOrigen').value.trim();
+            const destino = document.getElementById('adminDestino').value.trim();
+            const conductor = document.getElementById('adminConductor').value.trim();
+
+            if (!viajeId || !origen || !destino) {
+                alert("Completa los campos obligatorios del viaje.");
+                return;
+            }
+
+            set(ref(db, 'viajes/' + viajeId), {
+                origen,
+                destino,
+                conductor: conductor || "Sin asignar",
+                lat: -33.4489,
+                lng: -70.6693,
+                estado: "Asignado"
+            }).then(() => {
+                alert(`¡Ruta ${viajeId} creada y asignada con éxito!`);
+            }).catch(err => {
+                alert("Error al guardar: " + err.message);
+            });
+        });
+
+        // 2. CONDUCTOR: Transmitir GPS
+        document.getElementById('btnIniciarConductor').addEventListener('click', () => {
+            const viajeId = document.getElementById('condViajeId').value.trim();
+            if (!viajeId) {
+                alert("Ingresa el ID del viaje asignado.");
+                return;
+            }
+
+            alert("Transmisión de GPS iniciada.");
+            if ("geolocation" in navigator) {
+                watchId = navigator.geolocation.watchPosition((pos) => {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+
+                    // Actualizar posición en Firebase
+                    set(ref(db, 'viajes/' + viajeId + '/lat'), lat);
+                    set(ref(db, 'viajes/' + viajeId + '/lng'), lng);
+                    set(ref(db, 'viajes/' + viajeId + '/estado'), 'En curso');
+
+                    if (!marker) {
+                        marker = L.marker([lat, lng]).addTo(map).bindPopup("Mi posición (Conductor)").openPopup();
+                    } else {
+                        marker.setLatLng([lat, lng]);
+                    }
+                    map.setView([lat, lng], 15);
+                }, (err) => {
+                    alert("Error de GPS: " + err.message);
+                }, { enableHighAccuracy: true });
+            } else {
+                alert("Tu dispositivo no soporta geolocalización.");
+            }
+        });
+
+        // 3. PASAJERO: Ver seguimiento
+        document.getElementById('btnSeguirPasajero').addEventListener('click', () => {
+            const viajeId = document.getElementById('pasViajeId').value.trim();
+            if (!viajeId) {
+                alert("Ingresa el ID del viaje a seguir.");
+                return;
+            }
+
+            if (watchId) navigator.geolocation.clearWatch(watchId);
+            alert(`Conectando al viaje: ${viajeId}`);
+
+            onValue(ref(db, 'viajes/' + viajeId), (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    const { lat, lng, destino, conductor } = data;
+                    if (lat && lng) {
+                        if (!marker) {
+                            marker = L.marker([lat, lng]).addTo(map).bindPopup(`Conductor: ${conductor}<br>Destino: ${destino}`).openPopup();
+                        } else {
+                            marker.setLatLng([lat, lng]);
+                        }
+                        map.setView([lat, lng], 15);
+                    }
+                } else {
+                    alert("El viaje no existe o aún no ha sido creado por el Administrador.");
+                }
+            });
+        });
+    </script>
+</body>
+</html>
