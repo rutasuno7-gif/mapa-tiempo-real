@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conductor - Transmisión GPS</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; display: flex; flex-direction: column; height: 100vh; background: #f4f6f7; }
+        header { background: #2c3e50; color: white; padding: 15px 20px; font-size: 18px; font-weight: bold; }
+        .panel { padding: 15px; background: #ffffff; border-bottom: 2px solid #ddd; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        input { padding: 8px 12px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
+        button { background: #27ae60; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #219653; }
+        #map { flex-grow: 1; width: 100%; }
+    </style>
+</head>
+<body>
+
+    <header>🚗 Panel de Conductor - Transmisión en Vivo</header>
+
+    <div class="panel">
+        <strong>Ingresa tu ID de Viaje asignado:</strong>
+        <input type="text" id="condViajeId" placeholder="Ej. ruta-01" />
+        <button id="btnIniciarConductor">Iniciar mi Ruta (GPS)</button>
+    </div>
+
+    <div id="map"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+        import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBx8q4zbeMNBi5s209ZMNUnF3gKI8MDdc0",
+            authDomain: "rutas-234e4.firebaseapp.com",
+            databaseURL: "https://rutas-234e4-default-rtdb.firebaseio.com",
+            projectId: "rutas-234e4",
+            storageBucket: "rutas-234e4.firebasestorage.app",
+            messagingSenderId: "169559501428",
+            appId: "1:169559501428:web:419b64babc56d1da6eff21",
+            measurementId: "G-GDNE6V9783"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        const map = L.map('map').setView([-33.4489, -70.6693], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+
+        let markerConductor = null;
+        let watchId = null;
+
+        document.getElementById('btnIniciarConductor').addEventListener('click', async () => {
+            const viajeId = document.getElementById('condViajeId').value.trim();
+            if (!viajeId) { alert("Ingresa el ID del viaje."); return; }
+
+            const snapshot = await get(ref(db, 'viajes/' + viajeId));
+            if (!snapshot.exists()) {
+                alert("El ID de viaje ingresado no existe. El administrador debe crearlo primero.");
+                return;
+            }
+
+            alert("¡ID válido! Transmisión de GPS iniciada.");
+            if ("geolocation" in navigator) {
+                watchId = navigator.geolocation.watchPosition((pos) => {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+
+                    set(ref(db, 'viajes/' + viajeId + '/lat'), lat);
+                    set(ref(db, 'viajes/' + viajeId + '/lng'), lng);
+                    set(ref(db, 'viajes/' + viajeId + '/estado'), 'En curso');
+
+                    if (!markerConductor) {
+                        markerConductor = L.marker([lat, lng]).addTo(map).bindPopup("Mi posición actual").openPopup();
+                    } else {
+                        markerConductor.setLatLng([lat, lng]);
+                    }
+                    map.setView([lat, lng], 15);
+                }, (err) => { alert("Error de GPS: " + err.message); }, { enableHighAccuracy: true });
+            } else {
+                alert("Tu dispositivo no soporta geolocalización.");
+            }
+        });
+    </script>
+</body>
+</html>
