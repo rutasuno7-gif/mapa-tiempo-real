@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Conductor - Transmisión GPS</title>
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: Arial, sans-serif; display: flex; flex-direction: column; height: 100vh; background: #f4f6f7; }
@@ -19,10 +18,10 @@
 </head>
 <body>
 
-    <header>🚗 Panel de Conductor - Transmisión en Vivo</header>
+    <header>🚗 Panel de Conductor - Ruta Asignada</header>
 
     <div class="panel">
-        <strong>Ingresa tu ID de Viaje asignado:</strong>
+        <strong>Ingresa tu ID de Viaje:</strong>
         <input type="text" id="condViajeId" placeholder="Ej. ruta-01" />
         <button id="btnIniciarConductor">Iniciar mi Ruta (GPS)</button>
         <button id="btnFinalizarConductor" style="display:none;">Finalizar Ruta</button>
@@ -54,11 +53,11 @@
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
 
         let markerConductor = null;
+        let markerOrigen = null;
         let markerDestino = null;
         let polylineRuta = null;
         let watchId = null;
         let viajeActualId = null;
-        let destCoords = null;
 
         const iconoAuto = L.icon({
             iconUrl: 'https://cdn-icons-png.flaticon.com/512/741/741407.png',
@@ -72,17 +71,28 @@
 
             const snapshot = await get(ref(db, 'viajes/' + viajeId));
             if (!snapshot.exists()) {
-                alert("El ID de viaje ingresado no existe. El administrador debe crearlo primero.");
+                alert("El ID de viaje ingresado no existe.");
                 return;
             }
 
             const datosViaje = snapshot.val();
             viajeActualId = viajeId;
-            alert("¡ID válido! Conectando GPS...");
+            alert("¡ID válido! Cargando origen y destino...");
 
+            // 1. Marcar el Origen (Punto de partida del pasajero - Verde)
+            if (datosViaje.lat && datosViaje.lng) {
+                markerOrigen = L.marker([datosViaje.lat, datosViaje.lng], {
+                    icon: L.icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+                        iconSize: [25, 41], iconAnchor: [12, 41]
+                    })
+                }).addTo(map).bindPopup(`<b>ORIGEN (Recogida):</b> ${datosViaje.origen}`);
+            }
+
+            // 2. Marcar el Destino (Punto final - Rojo)
             if (datosViaje.destLat && datosViaje.destLng) {
-                destCoords = [datosViaje.destLat, datosViaje.destLng];
-                markerDestino = L.marker(destCoords, {
+                markerDestino = L.marker([datosViaje.destLat, datosViaje.destLng], {
                     icon: L.icon({
                         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
                         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
@@ -97,30 +107,34 @@
             document.getElementById('btnFinalizarConductor').style.display = 'inline-block';
             document.getElementById('condViajeId').disabled = true;
 
+            // 3. Transmitir GPS del Conductor y actualizar posición del Auto
             if ("geolocation" in navigator) {
                 watchId = navigator.geolocation.watchPosition((pos) => {
-                    const lat = pos.coords.latitude;
-                    const lng = pos.coords.longitude;
-                    const posActual = [lat, lng];
+                    const latGPS = pos.coords.latitude;
+                    const lngGPS = pos.coords.longitude;
+                    const posAuto = [latGPS, lngGPS];
 
-                    set(ref(db, 'viajes/' + viajeId + '/lat'), lat);
-                    set(ref(db, 'viajes/' + viajeId + '/lng'), lng);
+                    // Guardamos la posición en vivo del conductor en sub-nodos separados para no perder el origen fijo
+                    set(ref(db, 'viajes/' + viajeId + '/conductorLat'), latGPS);
+                    set(ref(db, 'viajes/' + viajeId + '/conductorLng'), lngGPS);
 
                     if (!markerConductor) {
-                        markerConductor = L.marker(posActual, { icon: iconoAuto }).addTo(map).bindPopup("Mi posición actual").openPopup();
+                        markerConductor = L.marker(posAuto, { icon: iconoAuto }).addTo(map).bindPopup("Mi ubicación actual (Conductor)").openPopup();
                     } else {
-                        markerConductor.setLatLng(posActual);
+                        markerConductor.setLatLng(posAuto);
                     }
 
-                    if (destCoords) {
+                    // Línea azul desde el auto del conductor hasta el destino final
+                    if (datosViaje.destLat && datosViaje.destLng) {
+                        const destCoords = [datosViaje.destLat, datosViaje.destLng];
                         if (!polylineRuta) {
-                            polylineRuta = L.polyline([posActual, destCoords], { color: '#2980b9', weight: 4 }).addTo(map);
+                            polylineRuta = L.polyline([posAuto, destCoords], { color: '#2980b9', weight: 4 }).addTo(map);
                         } else {
-                            polylineRuta.setLatLngs([posActual, destCoords]);
+                            polylineRuta.setLatLngs([posAuto, destCoords]);
                         }
                     }
 
-                    map.setView(posActual, 15);
+                    map.setView(posAuto, 14);
                 }, (err) => { alert("Error de GPS: " + err.message); }, { enableHighAccuracy: true });
             } else {
                 alert("Tu dispositivo no soporta geolocalización.");
