@@ -11,91 +11,22 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            background: #f4f6f7;
-        }
-        header {
-            background: #2c3e50;
-            color: white;
-            padding: 10px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .roles-nav a {
-            color: white;
-            text-decoration: none;
-            background: #34495e;
-            padding: 8px 15px;
-            border-radius: 4px;
-            font-size: 14px;
-            font-weight: bold;
-        }
-        .panel-rol {
-            display: none;
-            padding: 15px;
-            background: #ffffff;
-            border-bottom: 2px solid #ddd;
-            gap: 10px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        .panel-rol.activo {
-            display: flex;
-        }
-        input, button.accion {
-            padding: 8px 12px;
-            border-radius: 4px;
-            border: 1px solid #ccc;
-            font-size: 14px;
-        }
-        button.accion {
-            background: #2980b9;
-            color: white;
-            cursor: pointer;
-            border: none;
-            font-weight: bold;
-        }
-        button.accion:hover {
-            background: #2471a3;
-        }
-        #map {
-            flex-grow: 1;
-            width: 100%;
-        }
-        .admin-table-container {
-            width: 100%;
-            max-height: 150px;
-            overflow-y: auto;
-            margin-top: 10px;
-            border: 1px solid #ddd;
-            background: #fff;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-        th, td {
-            padding: 6px 10px;
-            border-bottom: 1px solid #eee;
-            text-align: left;
-        }
-        th {
-            background: #f8f9fa;
-        }
-        .hint {
-            font-size: 12px;
-            color: #666;
-            width: 100%;
-            margin-top: -5px;
-        }
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; display: flex; flex-direction: column; height: 100vh; background: #f4f6f7; }
+        header { background: #2c3e50; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .roles-nav a { color: white; text-decoration: none; background: #34495e; padding: 8px 15px; border-radius: 4px; font-size: 14px; font-weight: bold; }
+        .panel-rol { display: none; padding: 15px; background: #ffffff; border-bottom: 2px solid #ddd; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .panel-rol.activo { display: flex; }
+        input, button.accion { padding: 8px 12px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
+        button.accion { background: #2980b9; color: white; cursor: pointer; border: none; font-weight: bold; }
+        button.accion:hover { background: #2471a3; }
+        button.eliminar { background: #c0392b; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        button.eliminar:hover { background: #a93226; }
+        #map { flex-grow: 1; width: 100%; }
+        .admin-table-container { width: 100%; max-height: 180px; overflow-y: auto; margin-top: 10px; border: 1px solid #ddd; background: #fff; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { padding: 6px 10px; border-bottom: 1px solid #eee; text-align: left; }
+        th { background: #f8f9fa; }
+        .hint { font-size: 12px; color: #666; width: 100%; margin-top: -5px; }
     </style>
 </head>
 <body>
@@ -108,7 +39,7 @@
         </div>
     </header>
 
-    <!-- LOGIN ADMIN (Asegurado con type="password") -->
+    <!-- LOGIN ADMIN -->
     <div id="panel-admin-login" class="panel-rol activo">
         <strong>Acceso Administrador:</strong>
         <input type="password" id="adminPasswordInput" placeholder="Ingresa clave (Rutas2026)" autocomplete="new-password" />
@@ -119,8 +50,8 @@
     <div id="panel-admin" class="panel-rol">
         <strong>Crear y Asignar Ruta:</strong>
         <input type="text" id="adminViajeId" placeholder="ID del Viaje (ej. ruta-01)" />
-        <input type="text" id="adminOrigen" placeholder="Origen (Ej: Providencia, Santiago, Chile)" />
-        <input type="text" id="adminDestino" placeholder="Destino (Ej: Valparaíso, Chile)" />
+        <input type="text" id="adminOrigen" placeholder="Origen (Ej: Providencia, Santiago)" />
+        <input type="text" id="adminDestino" placeholder="Destino (Ej: Valparaíso)" />
         <input type="text" id="adminConductor" placeholder="Nombre Conductor" />
         <button type="button" class="accion" id="btnGuardarRuta">Guardar y Asignar</button>
         <button type="button" class="accion" id="btnExportarExcel" style="background: #27ae60;">Exportar a Excel</button>
@@ -135,6 +66,7 @@
                         <th>Destino</th>
                         <th>Conductor</th>
                         <th>Estado</th>
+                        <th>Acción</th>
                     </tr>
                 </thead>
                 <tbody id="tablaRutasBody"></tbody>
@@ -144,13 +76,11 @@
 
     <div id="map"></div>
 
-    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <!-- Firebase y Lógica -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+        import { getDatabase, ref, set, remove, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBx8q4zbeMNBi5s209ZMNUnF3gKI8MDdc0",
@@ -170,9 +100,9 @@
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
 
         let todasLasRutasData = {};
+        let markersMap = {};
 
-        // Botón de Login
-        document.getElementById('btnLogAdmin').addEventListener('click', () => {
+        function verificarLogin() {
             const pass = document.getElementById('adminPasswordInput').value.trim();
             if (pass === "Rutas2026") {
                 document.getElementById('panel-admin-login').classList.remove('activo');
@@ -181,6 +111,11 @@
             } else {
                 alert("Clave de Administrador incorrecta. Debe ser Rutas2026");
             }
+        }
+
+        document.getElementById('btnLogAdmin').addEventListener('click', verificarLogin);
+        document.getElementById('adminPasswordInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') verificarLogin();
         });
 
         async function obtenerCoordenadas(direccion) {
@@ -212,14 +147,8 @@
             }
 
             set(ref(db, 'viajes/' + viajeId), {
-                origen: origenStr, 
-                destino: destinoStr, 
-                conductor: conductor || "Sin asignar",
-                lat: coordOrigen.lat, 
-                lng: coordOrigen.lng, 
-                destLat: coordDestino.lat, 
-                destLng: coordDestino.lng, 
-                estado: "Asignado"
+                origen: origenStr, destino: destinoStr, conductor: conductor || "Sin asignar",
+                lat: coordOrigen.lat, lng: coordOrigen.lng, destLat: coordDestino.lat, destLng: coordDestino.lng, estado: "Asignado"
             }).then(() => {
                 alert(`¡Ruta ${viajeId} creada con éxito!`);
                 document.getElementById('adminViajeId').value = '';
@@ -229,20 +158,42 @@
             });
         });
 
+        window.eliminarRuta = function(viajeId) {
+            if (confirm(`¿Estás seguro de eliminar la ruta ${viajeId}?`)) {
+                remove(ref(db, 'viajes/' + viajeId)).then(() => {
+                    if (markersMap[viajeId]) {
+                        map.removeLayer(markersMap[viajeId]);
+                        delete markersMap[viajeId];
+                    }
+                    alert("Ruta eliminada correctamente.");
+                });
+            }
+        };
+
         function cargarRutasAdmin() {
             onValue(ref(db, 'viajes'), (snapshot) => {
                 const data = snapshot.val();
                 const tbody = document.getElementById('tablaRutasBody');
                 tbody.innerHTML = '';
+                
+                // Limpiar marcadores antiguos del mapa
+                Object.values(markersMap).forEach(m => map.removeLayer(m));
+                markersMap = {};
+
                 if (data) {
                     todasLasRutasData = data;
                     Object.keys(data).forEach(id => {
                         const r = data[id];
-                        tbody.innerHTML += `<tr><td><b>${id}</b></td><td>${r.origen}</td><td>${r.destino}</td><td>${r.conductor}</td><td>${r.estado}</td></tr>`;
+                        tbody.innerHTML += `<tr><td><b>${id}</b></td><td>${r.origen}</td><td>${r.destino}</td><td>${r.conductor}</td><td>${r.estado}</td><td><button class="eliminar" onclick="eliminarRuta('${id}')">Eliminar</button></td></tr>`;
+
+                        if (r.lat && r.lng) {
+                            const marker = L.marker([r.lat, r.lng]).addTo(map).bindPopup(`<b>Ruta:</b> ${id}<br><b>Conductor:</b> ${r.conductor}<br><b>Estado:</b> ${r.estado}`);
+                            markersMap[id] = marker;
+                        }
                     });
                 } else {
                     todasLasRutasData = {};
-                    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">No hay rutas registradas</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">No hay rutas registradas</td></tr>`;
                 }
             });
         }
@@ -250,11 +201,8 @@
         document.getElementById('btnExportarExcel').addEventListener('click', () => {
             if (Object.keys(todasLasRutasData).length === 0) { alert("No hay datos para exportar."); return; }
             const arrayDatos = Object.keys(todasLasRutasData).map(id => ({
-                "ID Viaje": id, 
-                "Origen": todasLasRutasData[id].origen, 
-                "Destino": todasLasRutasData[id].destino,
-                "Conductor": todasLasRutasData[id].conductor, 
-                "Estado": todasLasRutasData[id].estado
+                "ID Viaje": id, "Origen": todasLasRutasData[id].origen, "Destino": todasLasRutasData[id].destino,
+                "Conductor": todasLasRutasData[id].conductor, "Estado": todasLasRutasData[id].estado
             }));
             const ws = XLSX.utils.json_to_sheet(arrayDatos);
             const wb = XLSX.utils.book_new();
