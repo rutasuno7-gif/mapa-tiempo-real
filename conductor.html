@@ -79,18 +79,16 @@
             viajeActualId = viajeId;
             alert("¡ID válido! Cargando origen y destino...");
 
-            // 1. Marcar el Origen (Punto de partida del pasajero - Verde)
-            if (datosViaje.lat && datosViaje.lng) {
-                markerOrigen = L.marker([datosViaje.lat, datosViaje.lng], {
+            if (datosViaje.origenLat && datosViaje.origenLng) {
+                markerOrigen = L.marker([datosViaje.origenLat, datosViaje.origenLng], {
                     icon: L.icon({
                         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
                         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
                         iconSize: [25, 41], iconAnchor: [12, 41]
                     })
-                }).addTo(map).bindPopup(`<b>ORIGEN (Recogida):</b> ${datosViaje.origen}`);
+                }).addTo(map).bindPopup(`<b>ORIGEN:</b> ${datosViaje.origen}`);
             }
 
-            // 2. Marcar el Destino (Punto final - Rojo)
             if (datosViaje.destLat && datosViaje.destLng) {
                 markerDestino = L.marker([datosViaje.destLat, datosViaje.destLng], {
                     icon: L.icon({
@@ -107,24 +105,22 @@
             document.getElementById('btnFinalizarConductor').style.display = 'inline-block';
             document.getElementById('condViajeId').disabled = true;
 
-            // 3. Transmitir GPS del Conductor y actualizar posición del Auto
             if ("geolocation" in navigator) {
                 watchId = navigator.geolocation.watchPosition((pos) => {
                     const latGPS = pos.coords.latitude;
                     const lngGPS = pos.coords.longitude;
                     const posAuto = [latGPS, lngGPS];
 
-                    // Guardamos la posición en vivo del conductor en sub-nodos separados para no perder el origen fijo
+                    // Transmitimos a nodos exclusivos del conductor
                     set(ref(db, 'viajes/' + viajeId + '/conductorLat'), latGPS);
                     set(ref(db, 'viajes/' + viajeId + '/conductorLng'), lngGPS);
 
                     if (!markerConductor) {
-                        markerConductor = L.marker(posAuto, { icon: iconoAuto }).addTo(map).bindPopup("Mi ubicación actual (Conductor)").openPopup();
+                        markerConductor = L.marker(posAuto, { icon: iconoAuto }).addTo(map).bindPopup("Mi ubicación actual").openPopup();
                     } else {
                         markerConductor.setLatLng(posAuto);
                     }
 
-                    // Línea azul desde el auto del conductor hasta el destino final
                     if (datosViaje.destLat && datosViaje.destLng) {
                         const destCoords = [datosViaje.destLat, datosViaje.destLng];
                         if (!polylineRuta) {
