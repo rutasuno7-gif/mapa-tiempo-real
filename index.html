@@ -16,7 +16,8 @@
         .roles-nav a { color: white; text-decoration: none; background: #34495e; padding: 8px 15px; border-radius: 4px; font-size: 14px; font-weight: bold; }
         .panel-rol { display: none; padding: 15px; background: #ffffff; border-bottom: 2px solid #ddd; gap: 10px; flex-wrap: wrap; align-items: center; }
         .panel-rol.activo { display: flex; }
-        input, button.accion { padding: 8px 12px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
+        input[type="text"], input[type="password"], button.accion { padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
+        input[type="text"], input[type="password"] { flex: 1; min-width: 200px; }
         button.accion { background: #2980b9; color: white; cursor: pointer; border: none; font-weight: bold; }
         button.accion:hover { background: #2471a3; }
         button.eliminar { background: #c0392b; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
@@ -26,6 +27,7 @@
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         th, td { padding: 6px 10px; border-bottom: 1px solid #eee; text-align: left; }
         th { background: #f8f9fa; }
+        .login-box { display: flex; gap: 10px; width: 100%; max-width: 400px; margin-top: 10px; }
         .hint { font-size: 12px; color: #666; width: 100%; margin-top: -5px; }
     </style>
 </head>
@@ -40,11 +42,12 @@
     </header>
 
     <!-- LOGIN ADMIN -->
-    <div id="panel-admin-login" class="panel-rol activo">
+    <div id="panel-admin-login" class="panel-rol activo" style="flex-direction: column; align-items: flex-start;">
         <strong>Acceso Administrador:</strong>
-        <!-- Forzado nativo estricto -->
-        <input type="password" id="adminPasswordInput" placeholder="Ingresa clave (Rutas2026)" autocomplete="new-password" />
-        <button type="button" class="accion" id="btnLogAdmin">Entrar</button>
+        <div class="login-box">
+            <input type="password" id="adminPasswordInput" placeholder="Ingrese contraseña (Rutas2026)">
+            <button class="accion" id="btnLogAdmin">Entrar</button>
+        </div>
     </div>
 
     <!-- PANEL ADMINISTRADOR -->
