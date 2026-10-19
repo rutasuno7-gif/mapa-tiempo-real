@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Administración - Plataforma de Rutas</title>
     
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- SheetJS para exportar a Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     
     <style>
@@ -59,7 +57,7 @@
         <input type="text" id="adminConductor" placeholder="Nombre Conductor" />
         <button type="button" class="accion" id="btnGuardarRuta">Guardar y Asignar</button>
         <button type="button" class="accion" id="btnExportarExcel" style="background: #27ae60;">Exportar a Excel</button>
-        <div class="hint">💡 <b>Formato:</b> [Calle/Ciudad], [Comuna/Ciudad], [País]. El ID de viaje será la clave única para el chofer y cliente.</div>
+        <div class="hint">💡 <b>Formato:</b> [Calle/Ciudad], [Comuna/Ciudad], [País].</div>
         
         <div class="admin-table-container">
             <table>
@@ -150,9 +148,16 @@
                 return;
             }
 
+            // Guardamos usando origenLat y origenLng estrictamente independientes
             set(ref(db, 'viajes/' + viajeId), {
-                origen: origenStr, destino: destinoStr, conductor: conductor || "Sin asignar",
-                lat: coordOrigen.lat, lng: coordOrigen.lng, destLat: coordDestino.lat, destLng: coordDestino.lng, estado: "Asignado"
+                origen: origenStr, 
+                destino: destinoStr, 
+                conductor: conductor || "Sin asignar",
+                origenLat: coordOrigen.lat, 
+                origenLng: coordOrigen.lng, 
+                destLat: coordDestino.lat, 
+                destLng: coordDestino.lng, 
+                estado: "Asignado"
             }).then(() => {
                 alert(`¡Ruta ${viajeId} creada con éxito!`);
                 document.getElementById('adminViajeId').value = '';
@@ -189,8 +194,8 @@
                         const r = data[id];
                         tbody.innerHTML += `<tr><td><b>${id}</b></td><td>${r.origen}</td><td>${r.destino}</td><td>${r.conductor}</td><td>${r.estado}</td><td><button class="eliminar" onclick="eliminarRuta('${id}')">Eliminar</button></td></tr>`;
 
-                        if (r.lat && r.lng) {
-                            const marker = L.marker([r.lat, r.lng]).addTo(map).bindPopup(`<b>Ruta:</b> ${id}<br><b>Conductor:</b> ${r.conductor}<br><b>Estado:</b> ${r.estado}`);
+                        if (r.origenLat && r.origenLng) {
+                            const marker = L.marker([r.origenLat, r.origenLng]).addTo(map).bindPopup(`<b>Ruta:</b> ${id}<br><b>Conductor:</b> ${r.conductor}`);
                             markersMap[id] = marker;
                         }
                     });
