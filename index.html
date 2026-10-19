@@ -42,7 +42,7 @@
     <!-- LOGIN ADMIN -->
     <div id="panel-admin-login" class="panel-rol activo">
         <strong>Acceso Administrador:</strong>
-        <input type="password" id="adminPasswordInput" placeholder="Ingresa clave (Rutas2026)" autocomplete="new-password" />
+        <input type="password" id="adminPasswordInput" placeholder="Ingresa clave (Rutas2026)" autocomplete="new-password" style="-webkit-text-security: disc;" />
         <button type="button" class="accion" id="btnLogAdmin">Entrar</button>
     </div>
 
@@ -176,7 +176,6 @@
                 const tbody = document.getElementById('tablaRutasBody');
                 tbody.innerHTML = '';
                 
-                // Limpiar marcadores antiguos del mapa
                 Object.values(markersMap).forEach(m => map.removeLayer(m));
                 markersMap = {};
 
