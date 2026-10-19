@@ -94,14 +94,14 @@
                 if (data) {
                     const { lat, lng, destLat, destLng, conductorLat, conductorLng, origen, destino, conductor, estado } = data;
                     
-                    // 1. Dibujar u actualizar Origen Fijo (Verde)
+                    // 1. Dibujar Origen Fijo (Verde)
                     if (lat && lng) {
                         if (!markerOrigen) {
                             markerOrigen = L.marker([lat, lng], { icon: iconoOrigenVerde }).addTo(map).bindPopup(`<b>ORIGEN:</b> ${origen}`);
                         }
                     }
 
-                    // 2. Dibujar u actualizar Destino Fijo (Rojo)
+                    // 2. Dibujar Destino Fijo (Rojo)
                     if (destLat && destLng) {
                         if (!markerDestino) {
                             markerDestino = L.marker([destLat, destLng], { icon: iconoDestinoRojo }).addTo(map).bindPopup(`<b>DESTINO:</b> ${destino}`);
