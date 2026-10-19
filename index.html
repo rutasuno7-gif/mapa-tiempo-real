@@ -46,7 +46,7 @@
             flex-wrap: wrap;
             align-items: center;
         }
-        .panel-rol.active {
+        .panel-rol.activo {
             display: flex;
         }
         input, button.accion {
@@ -109,9 +109,8 @@
     </header>
 
     <!-- LOGIN ADMIN -->
-    <div id="panel-admin-login" class="panel-rol active">
+    <div id="panel-admin-login" class="panel-rol activo">
         <strong>Acceso Administrador:</strong>
-        <!-- Se fuerza el type password de forma limpia -->
         <input type="password" id="adminPasswordInput" placeholder="Ingresa clave (Rutas2026)" />
         <button type="button" class="accion" id="btnLogAdmin">Entrar</button>
     </div>
@@ -145,6 +144,10 @@
 
     <div id="map"></div>
 
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Firebase y Lógica -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
         import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
@@ -168,17 +171,15 @@
 
         let todasLasRutasData = {};
 
-        // Lógica de Login limpia usando manipulación de clases (evita conflictos de display)
+        // Botón de Login directo y seguro
         document.getElementById('btnLogAdmin').addEventListener('click', () => {
-            const passInput = document.getElementById('adminPasswordInput');
-            const pass = passInput ? passInput.value.trim() : "";
-            
+            const pass = document.getElementById('adminPasswordInput').value.trim();
             if (pass === "Rutas2026") {
-                document.getElementById('panel-admin-login').classList.remove('active');
-                document.getElementById('panel-admin').classList.add('active');
+                document.getElementById('panel-admin-login').classList.remove('activo');
+                document.getElementById('panel-admin').classList.add('activo');
                 cargarRutasAdmin();
             } else {
-                alert("Clave de Administrador incorrecta.");
+                alert("Clave de Administrador incorrecta. Debe ser Rutas2026");
             }
         });
 
@@ -247,7 +248,7 @@
         }
 
         document.getElementById('btnExportarExcel').addEventListener('click', () => {
-            if (Object.keys(todasLasRutasData).length === 0) { alert("No hay datos."); return; }
+            if (Object.keys(todasLasRutasData).length === 0) { alert("No hay datos para exportar."); return; }
             const arrayDatos = Object.keys(todasLasRutasData).map(id => ({
                 "ID Viaje": id, 
                 "Origen": todasLasRutasData[id].origen, 
