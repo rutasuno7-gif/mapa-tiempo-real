@@ -14,9 +14,8 @@
         .roles-nav a { color: white; text-decoration: none; background: #34495e; padding: 8px 15px; border-radius: 4px; font-size: 14px; font-weight: bold; }
         .panel-rol { display: none; padding: 15px; background: #ffffff; border-bottom: 2px solid #ddd; gap: 10px; flex-wrap: wrap; align-items: center; }
         .panel-rol.activo { display: flex; }
-        input[type="text"], input[type="password"], button.accion { padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
-        input[type="text"], input[type="password"] { flex: 1; min-width: 200px; }
-        button.accion { background: #2980b9; color: white; cursor: pointer; border: none; font-weight: bold; }
+        input[type="text"], input[type="password"] { padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; flex: 1; min-width: 200px; }
+        button.accion { padding: 10px 15px; background: #2980b9; color: white; cursor: pointer; border: none; font-weight: bold; border-radius: 4px; }
         button.accion:hover { background: #2471a3; }
         button.eliminar { background: #c0392b; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
         button.eliminar:hover { background: #a93226; }
@@ -25,7 +24,7 @@
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         th, td { padding: 6px 10px; border-bottom: 1px solid #eee; text-align: left; }
         th { background: #f8f9fa; }
-        .login-box { display: flex; gap: 10px; width: 100%; max-width: 400px; margin-top: 10px; }
+        .login-box { display: flex; gap: 10px; width: 100%; max-width: 400px; margin-top: 5px; }
         .hint { font-size: 12px; color: #666; width: 100%; margin-top: -5px; }
     </style>
 </head>
@@ -39,7 +38,7 @@
         </div>
     </header>
 
-    <!-- LOGIN ADMIN -->
+    <!-- LOGIN ADMIN (Estructura limpia para ocultar clave) -->
     <div id="panel-admin-login" class="panel-rol activo" style="flex-direction: column; align-items: flex-start;">
         <strong>Acceso Administrador:</strong>
         <div class="login-box">
@@ -148,7 +147,6 @@
                 return;
             }
 
-            // Guardamos usando origenLat y origenLng estrictamente independientes
             set(ref(db, 'viajes/' + viajeId), {
                 origen: origenStr, 
                 destino: destinoStr, 
