@@ -111,8 +111,9 @@
     <!-- LOGIN ADMIN -->
     <div id="panel-admin-login" class="panel-rol active">
         <strong>Acceso Administrador:</strong>
+        <!-- Se fuerza el type password de forma limpia -->
         <input type="password" id="adminPasswordInput" placeholder="Ingresa clave (Rutas2026)" />
-        <button class="accion" id="btnLogAdmin">Entrar</button>
+        <button type="button" class="accion" id="btnLogAdmin">Entrar</button>
     </div>
 
     <!-- PANEL ADMINISTRADOR -->
@@ -122,8 +123,8 @@
         <input type="text" id="adminOrigen" placeholder="Origen (Ej: Providencia, Santiago, Chile)" />
         <input type="text" id="adminDestino" placeholder="Destino (Ej: Valparaíso, Chile)" />
         <input type="text" id="adminConductor" placeholder="Nombre Conductor" />
-        <button class="accion" id="btnGuardarRuta">Guardar y Asignar</button>
-        <button class="accion" id="btnExportarExcel" style="background: #27ae60;">Exportar a Excel</button>
+        <button type="button" class="accion" id="btnGuardarRuta">Guardar y Asignar</button>
+        <button type="button" class="accion" id="btnExportarExcel" style="background: #27ae60;">Exportar a Excel</button>
         <div class="hint">💡 <b>Formato:</b> [Calle/Ciudad], [Comuna/Ciudad], [País]. El ID de viaje será la clave única para el chofer y cliente.</div>
         
         <div class="admin-table-container">
@@ -167,10 +168,13 @@
 
         let todasLasRutasData = {};
 
+        // Lógica de Login limpia usando manipulación de clases (evita conflictos de display)
         document.getElementById('btnLogAdmin').addEventListener('click', () => {
-            const pass = document.getElementById('adminPasswordInput').value.trim();
+            const passInput = document.getElementById('adminPasswordInput');
+            const pass = passInput ? passInput.value.trim() : "";
+            
             if (pass === "Rutas2026") {
-                document.getElementById('panel-admin-login').style.display = 'none';
+                document.getElementById('panel-admin-login').classList.remove('active');
                 document.getElementById('panel-admin').classList.add('active');
                 cargarRutasAdmin();
             } else {
@@ -207,8 +211,14 @@
             }
 
             set(ref(db, 'viajes/' + viajeId), {
-                origen: origenStr, destino: destinoStr, conductor: conductor || "Sin asignar",
-                lat: coordOrigen.lat, lng: coordOrigen.lng, destLat: coordDestino.lat, destLng: coordDestino.lng, estado: "Asignado"
+                origen: origenStr, 
+                destino: destinoStr, 
+                conductor: conductor || "Sin asignar",
+                lat: coordOrigen.lat, 
+                lng: coordOrigen.lng, 
+                destLat: coordDestino.lat, 
+                destLng: coordDestino.lng, 
+                estado: "Asignado"
             }).then(() => {
                 alert(`¡Ruta ${viajeId} creada con éxito!`);
                 document.getElementById('adminViajeId').value = '';
@@ -239,8 +249,11 @@
         document.getElementById('btnExportarExcel').addEventListener('click', () => {
             if (Object.keys(todasLasRutasData).length === 0) { alert("No hay datos."); return; }
             const arrayDatos = Object.keys(todasLasRutasData).map(id => ({
-                "ID Viaje": id, "Origen": todasLasRutasData[id].origen, "Destino": todasLasRutasData[id].destino,
-                "Conductor": todasLasRutasData[id].conductor, "Estado": todasLasRutasData[id].estado
+                "ID Viaje": id, 
+                "Origen": todasLasRutasData[id].origen, 
+                "Destino": todasLasRutasData[id].destino,
+                "Conductor": todasLasRutasData[id].conductor, 
+                "Estado": todasLasRutasData[id].estado
             }));
             const ws = XLSX.utils.json_to_sheet(arrayDatos);
             const wb = XLSX.utils.book_new();
