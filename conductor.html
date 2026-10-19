@@ -55,8 +55,16 @@
 
         let markerConductor = null;
         let markerDestino = null;
+        let polylineRuta = null;
         let watchId = null;
         let viajeActualId = null;
+        let destCoords = null;
+
+        const iconoAuto = L.icon({
+            iconUrl: 'https://cdn-icons-png.flaticon.com/512/741/741407.png',
+            iconSize: [35, 35],
+            iconAnchor: [17, 17]
+        });
 
         document.getElementById('btnIniciarConductor').addEventListener('click', async () => {
             const viajeId = document.getElementById('condViajeId').value.trim();
@@ -72,9 +80,9 @@
             viajeActualId = viajeId;
             alert("¡ID válido! Conectando GPS...");
 
-            // Marcar destino en el mapa del conductor
             if (datosViaje.destLat && datosViaje.destLng) {
-                markerDestino = L.marker([datosViaje.destLat, datosViaje.destLng], {
+                destCoords = [datosViaje.destLat, datosViaje.destLng];
+                markerDestino = L.marker(destCoords, {
                     icon: L.icon({
                         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
                         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
@@ -83,7 +91,6 @@
                 }).addTo(map).bindPopup(`<b>DESTINO:</b> ${datosViaje.destino}`);
             }
             
-            // Cambiar estado a En curso
             set(ref(db, 'viajes/' + viajeId + '/estado'), 'En curso');
 
             document.getElementById('btnIniciarConductor').style.display = 'none';
@@ -94,16 +101,26 @@
                 watchId = navigator.geolocation.watchPosition((pos) => {
                     const lat = pos.coords.latitude;
                     const lng = pos.coords.longitude;
+                    const posActual = [lat, lng];
 
                     set(ref(db, 'viajes/' + viajeId + '/lat'), lat);
                     set(ref(db, 'viajes/' + viajeId + '/lng'), lng);
 
                     if (!markerConductor) {
-                        markerConductor = L.marker([lat, lng]).addTo(map).bindPopup("Mi posición actual").openPopup();
+                        markerConductor = L.marker(posActual, { icon: iconoAuto }).addTo(map).bindPopup("Mi posición actual").openPopup();
                     } else {
-                        markerConductor.setLatLng([lat, lng]);
+                        markerConductor.setLatLng(posActual);
                     }
-                    map.setView([lat, lng], 15);
+
+                    if (destCoords) {
+                        if (!polylineRuta) {
+                            polylineRuta = L.polyline([posActual, destCoords], { color: '#2980b9', weight: 4 }).addTo(map);
+                        } else {
+                            polylineRuta.setLatLngs([posActual, destCoords]);
+                        }
+                    }
+
+                    map.setView(posActual, 15);
                 }, (err) => { alert("Error de GPS: " + err.message); }, { enableHighAccuracy: true });
             } else {
                 alert("Tu dispositivo no soporta geolocalización.");
