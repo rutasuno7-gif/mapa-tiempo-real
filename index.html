@@ -121,7 +121,7 @@
                 document.getElementById('panel-admin').classList.add('activo');
                 cargarRutasAdmin();
             } else {
-                alert("Clave de Administrador incorrecta. Debe ser Rutas2026");
+                alert("Clave de Administrador incorrecta."); // Alerta limpia sin mostrar la clave
             }
         }
 
@@ -141,7 +141,6 @@
         }
 
         async function calcularRutaYCombustible(lat1, lon1, lat2, lon2, tipoCombustible) {
-            // Diccionario de precios reales por litro en Chile
             const preciosCombustible = {
                 "93": 1575,
                 "95": 1591,
@@ -160,7 +159,7 @@
                     const distanciaMetros = data.routes[0].distance;
                     const distanciaKm = (distanciaMetros / 1000).toFixed(1);
 
-                    const rendimiento = 12; // km por litro estándar
+                    const rendimiento = 12; 
                     const costoTotal = Math.round((distanciaKm / rendimiento) * precioLitro);
 
                     return {
