@@ -14,7 +14,7 @@
         .roles-nav a { color: white; text-decoration: none; background: #34495e; padding: 8px 15px; border-radius: 4px; font-size: 14px; font-weight: bold; }
         .panel-rol { display: none; padding: 15px; background: #ffffff; border-bottom: 2px solid #ddd; gap: 10px; flex-wrap: wrap; align-items: center; }
         .panel-rol.activo { display: flex; }
-        input[type="text"], input[type="password"] { padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; flex: 1; min-width: 200px; }
+        input[type="text"], input[type="password"] { padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; flex: 1; min-width: 180px; }
         button.accion { padding: 10px 15px; background: #2980b9; color: white; cursor: pointer; border: none; font-weight: bold; border-radius: 4px; }
         button.accion:hover { background: #2471a3; }
         button.eliminar { background: #c0392b; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
@@ -51,12 +51,12 @@
     <div id="panel-admin" class="panel-rol">
         <strong>Crear y Asignar Ruta:</strong>
         <input type="text" id="adminViajeId" placeholder="ID del Viaje (ej. ruta-01)" />
-        <input type="text" id="adminOrigen" placeholder="Origen (Ej: Providencia, Santiago)" />
+        <input type="text" id="adminOrigen" placeholder="Origen (Ej: Providencia, Stgo)" />
         <input type="text" id="adminDestino" placeholder="Destino (Ej: Valparaíso)" />
         <input type="text" id="adminConductor" placeholder="Nombre Conductor" />
         <button type="button" class="accion" id="btnGuardarRuta">Guardar y Asignar</button>
         <button type="button" class="accion" id="btnExportarExcel" style="background: #27ae60;">Exportar a Excel</button>
-        <div class="hint">💡 <b>Formato:</b> [Calle/Ciudad], [Comuna/Ciudad], [País].</div>
+        <div class="hint">💡 El sistema calculará automáticamente la distancia vial en km y el costo estimado de combustible.</div>
         
         <div class="admin-table-container">
             <table>
@@ -66,6 +66,8 @@
                         <th>Origen</th>
                         <th>Destino</th>
                         <th>Conductor</th>
+                        <th>Distancia</th>
+                        <th>Combustible Est.</th>
                         <th>Estado</th>
                         <th>Acción</th>
                     </tr>
@@ -127,6 +129,37 @@
             } catch (e) { return null; }
         }
 
+        // Función para calcular distancia vial y combustible usando OSRM
+        async function calcularRutaYCombustible(lat1, lon1, lat2, lon2) {
+            try {
+                const url = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.routes && data.routes.length > 0) {
+                    const distanciaMetros = data.routes[0].distance; // en metros
+                    const distanciaKm = (distanciaMetros / 1000).toFixed(1);
+
+                    // Parámetros de cálculo: 
+                    // Rendimiento estimado: 12 km por litro de bencina.
+                    // Precio estimado litro: $1.300 CLP.
+                    const rendimientoKmPorLitro = 12; 
+                    const precioLitroBencina = 1300;
+
+                    const litrosConsumidos = distanciaKm / rendimientoKmPorLitro;
+                    const costoTotal = Math.round(litrosConsumidos * precioLitroBencina);
+
+                    return {
+                        distanciaText: `${distanciaKm} km`,
+                        costoText: `$${costoTotal.toLocaleString('es-CL')} CLP`
+                    };
+                }
+            } catch (e) {
+                console.error("Error calculando ruta:", e);
+            }
+            return { distanciaText: "N/A", costoText: "N/A" };
+        }
+
         document.getElementById('btnGuardarRuta').addEventListener('click', async () => {
             const viajeId = document.getElementById('adminViajeId').value.trim();
             const origenStr = document.getElementById('adminOrigen').value.trim();
@@ -138,7 +171,7 @@
                 return;
             }
 
-            alert("Buscando coordenadas...");
+            alert("Calculando coordenadas, distancia y combustible...");
             const coordOrigen = await obtenerCoordenadas(origenStr);
             const coordDestino = await obtenerCoordenadas(destinoStr);
 
@@ -146,6 +179,9 @@
                 alert("No se encontraron una o ambas direcciones. Verifica el formato.");
                 return;
             }
+
+            // Calcular distancia y combustible de forma automática
+            const calculo = await calcularRutaYCombustible(coordOrigen.lat, coordOrigen.lng, coordDestino.lat, coordDestino.lng);
 
             set(ref(db, 'viajes/' + viajeId), {
                 origen: origenStr, 
@@ -155,9 +191,11 @@
                 origenLng: coordOrigen.lng, 
                 destLat: coordDestino.lat, 
                 destLng: coordDestino.lng, 
+                distancia: calculo.distanciaText,
+                combustible: calculo.costoText,
                 estado: "Asignado"
             }).then(() => {
-                alert(`¡Ruta ${viajeId} creada con éxito!`);
+                alert(`¡Ruta ${viajeId} creada con éxito!\nDistancia: ${calculo.distanciaText}\nCosto estimado: ${calculo.costoText}`);
                 document.getElementById('adminViajeId').value = '';
                 document.getElementById('adminOrigen').value = '';
                 document.getElementById('adminDestino').value = '';
@@ -190,7 +228,19 @@
                     todasLasRutasData = data;
                     Object.keys(data).forEach(id => {
                         const r = data[id];
-                        tbody.innerHTML += `<tr><td><b>${id}</b></td><td>${r.origen}</td><td>${r.destino}</td><td>${r.conductor}</td><td>${r.estado}</td><td><button class="eliminar" onclick="eliminarRuta('${id}')">Eliminar</button></td></tr>`;
+                        const dist = r.distancia || 'Calculando...';
+                        const comb = r.combustible || 'Calculando...';
+
+                        tbody.innerHTML += `<tr>
+                            <td><b>${id}</b></td>
+                            <td>${r.origen}</td>
+                            <td>${r.destino}</td>
+                            <td>${r.conductor}</td>
+                            <td><b>${dist}</b></td>
+                            <td style="color: #27ae60; font-weight: bold;">${comb}</td>
+                            <td>${r.estado}</td>
+                            <td><button class="eliminar" onclick="eliminarRuta('${id}')">Eliminar</button></td>
+                        </tr>`;
 
                         if (r.origenLat && r.origenLng) {
                             const iconoOrigenVerde = L.icon({
@@ -199,13 +249,13 @@
                                 iconSize: [25, 41], iconAnchor: [12, 41]
                             });
                             const marker = L.marker([r.origenLat, r.origenLng], { icon: iconoOrigenVerde }).addTo(map)
-                                .bindPopup(`<b>ID Viaje:</b> ${id}<br><b>Conductor:</b> ${r.conductor}<br><b>Origen:</b> ${r.origen}`);
+                                .bindPopup(`<b>ID:</b> ${id}<br><b>Conductor:</b> ${r.conductor}<br><b>Distancia:</b> ${dist}<br><b>Combustible Est.:</b> ${comb}`);
                             markersMap[id] = marker;
                         }
                     });
                 } else {
                     todasLasRutasData = {};
-                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">No hay rutas registradas</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">No hay rutas registradas</td></tr>`;
                 }
             });
         }
@@ -213,8 +263,13 @@
         document.getElementById('btnExportarExcel').addEventListener('click', () => {
             if (Object.keys(todasLasRutasData).length === 0) { alert("No hay datos para exportar."); return; }
             const arrayDatos = Object.keys(todasLasRutasData).map(id => ({
-                "ID Viaje": id, "Origen": todasLasRutasData[id].origen, "Destino": todasLasRutasData[id].destino,
-                "Conductor": todasLasRutasData[id].conductor, "Estado": todasLasRutasData[id].estado
+                "ID Viaje": id, 
+                "Origen": todasLasRutasData[id].origen, 
+                "Destino": todasLasRutasData[id].destino,
+                "Conductor": todasLasRutasData[id].conductor, 
+                "Distancia": todasLasRutasData[id].distancia || 'N/A',
+                "Gasto Combustible Est.": todasLasRutasData[id].combustible || 'N/A',
+                "Estado": todasLasRutasData[id].estado
             }));
             const ws = XLSX.utils.json_to_sheet(arrayDatos);
             const wb = XLSX.utils.book_new();
