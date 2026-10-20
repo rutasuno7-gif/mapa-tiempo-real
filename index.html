@@ -14,7 +14,7 @@
         .roles-nav a { color: white; text-decoration: none; background: #34495e; padding: 8px 15px; border-radius: 4px; font-size: 14px; font-weight: bold; }
         .panel-rol { display: none; padding: 15px; background: #ffffff; border-bottom: 2px solid #ddd; gap: 10px; flex-wrap: wrap; align-items: center; }
         .panel-rol.activo { display: flex; }
-        input[type="text"], input[type="password"] { padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; flex: 1; min-width: 180px; }
+        input[type="text"], input[type="password"], select { padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; flex: 1; min-width: 150px; }
         button.accion { padding: 10px 15px; background: #2980b9; color: white; cursor: pointer; border: none; font-weight: bold; border-radius: 4px; }
         button.accion:hover { background: #2471a3; }
         button.eliminar { background: #c0392b; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
@@ -50,13 +50,22 @@
     <!-- PANEL ADMINISTRADOR -->
     <div id="panel-admin" class="panel-rol">
         <strong>Crear y Asignar Ruta:</strong>
-        <input type="text" id="adminViajeId" placeholder="ID del Viaje (ej. ruta-01)" />
-        <input type="text" id="adminOrigen" placeholder="Origen (Ej: Macul 3700, Santiago)" />
-        <input type="text" id="adminDestino" placeholder="Destino (Ej: San Bernardo, Santiago)" />
-        <input type="text" id="adminConductor" placeholder="Nombre Conductor" />
-        <button type="button" class="accion" id="btnGuardarRuta">Guardar y Asignar</button>
-        <button type="button" class="accion" id="btnExportarExcel" style="background: #27ae60;">Exportar a Excel</button>
-        <div class="hint">💡 Consejo: Escribe comunas claras (ej: "Avenida Macul 3700, Macul, Chile").</div>
+        <input type="text" id="adminViajeId" placeholder="ID (ej. ruta-01)" />
+        <input type="text" id="adminOrigen" placeholder="Origen (Ej: Macul 3700)" />
+        <input type="text" id="adminDestino" placeholder="Destino (Ej: San Bernardo)" />
+        <input type="text" id="adminConductor" placeholder="Conductor" />
+        
+        <!-- Selector de Tipo de Combustible -->
+        <select id="adminCombustibleTipo">
+            <option value="93">Bencina 93 ($1.575/L)</option>
+            <option value="95">Bencina 95 ($1.591/L)</option>
+            <option value="97">Bencina 97 ($1.629/L)</option>
+            <option value="diesel">Diésel ($1.530/L)</option>
+        </select>
+
+        <button type="button" class="accion" id="btnGuardarRuta">Guardar Ruta</button>
+        <button type="button" class="accion" id="btnExportarExcel" style="background: #27ae60;">Exportar Excel</button>
+        <div class="hint">💡 El costo se calcula en base a un rendimiento estándar de 12 km/L y los precios reales del combustible.</div>
         
         <div class="admin-table-container">
             <table>
@@ -123,17 +132,25 @@
 
         async function obtenerCoordenadas(direccion) {
             try {
-                // Añadimos ", Chile" automáticamente si el usuario no lo puso para asegurar resultados rápidos
                 let query = direccion.toLowerCase().includes('chile') ? direccion : direccion + ", Chile";
                 const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
-                
                 const response = await fetch(url);
                 const data = await response.json();
                 return data.length > 0 ? { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) } : null;
             } catch (e) { return null; }
         }
 
-        async function calcularRutaYCombustible(lat1, lon1, lat2, lon2) {
+        async function calcularRutaYCombustible(lat1, lon1, lat2, lon2, tipoCombustible) {
+            // Diccionario de precios reales por litro en Chile
+            const preciosCombustible = {
+                "93": 1575,
+                "95": 1591,
+                "97": 1629,
+                "diesel": 1530
+            };
+
+            const precioLitro = preciosCombustible[tipoCombustible] || 1575;
+
             try {
                 const url = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`;
                 const response = await fetch(url);
@@ -143,9 +160,8 @@
                     const distanciaMetros = data.routes[0].distance;
                     const distanciaKm = (distanciaMetros / 1000).toFixed(1);
 
-                    const rendimiento = 12; // km por litro
-                    const precioBencina = 1300; // CLP
-                    const costoTotal = Math.round((distanciaKm / rendimiento) * precioBencina);
+                    const rendimiento = 12; // km por litro estándar
+                    const costoTotal = Math.round((distanciaKm / rendimiento) * precioLitro);
 
                     return {
                         distanciaText: `${distanciaKm} km`,
@@ -153,7 +169,7 @@
                     };
                 }
             } catch (e) { console.error(e); }
-            return { distanciaText: "Calculando...", costoText: "Pendiente" };
+            return { distanciaText: "N/A", costoText: "N/A" };
         }
 
         document.getElementById('btnGuardarRuta').addEventListener('click', async () => {
@@ -161,22 +177,23 @@
             const origenStr = document.getElementById('adminOrigen').value.trim();
             const destinoStr = document.getElementById('adminDestino').value.trim();
             const conductor = document.getElementById('adminConductor').value.trim();
+            const tipoCombustible = document.getElementById('adminCombustibleTipo').value;
 
             if (!viajeId || !origenStr || !destinoStr) {
                 alert("Completa los campos obligatorios.");
                 return;
             }
 
-            alert("Buscando coordenadas y calculando ruta vial...");
+            alert("Buscando coordenadas y calculando costo con valores reales...");
             const coordOrigen = await obtenerCoordenadas(origenStr);
             const coordDestino = await obtenerCoordenadas(destinoStr);
 
             if (!coordOrigen || !coordDestino) {
-                alert("No se pudieron ubicar una o ambas direcciones. Intenta ingresar la comuna de forma más clara (ej: 'Av. Macul 3700, Macul').");
+                alert("No se pudieron ubicar una o ambas direcciones. Intenta ingresar la comuna.");
                 return;
             }
 
-            const calculo = await calcularRutaYCombustible(coordOrigen.lat, coordOrigen.lng, coordDestino.lat, coordDestino.lng);
+            const calculo = await calcularRutaYCombustible(coordOrigen.lat, coordOrigen.lng, coordDestino.lat, coordDestino.lng, tipoCombustible);
 
             set(ref(db, 'viajes/' + viajeId), {
                 origen: origenStr, 
@@ -190,7 +207,7 @@
                 combustible: calculo.costoText,
                 estado: "Asignado"
             }).then(() => {
-                alert(`¡Ruta ${viajeId} creada con éxito!\nDistancia: ${calculo.distanciaText}\nCosto est.: ${calculo.costoText}`);
+                alert(`¡Ruta ${viajeId} creada con éxito!\nDistancia: ${calculo.distanciaText}\nCosto est. (Combustible): ${calculo.costoText}`);
                 document.getElementById('adminViajeId').value = '';
                 document.getElementById('adminOrigen').value = '';
                 document.getElementById('adminDestino').value = '';
@@ -223,8 +240,8 @@
                     todasLasRutasData = data;
                     Object.keys(data).forEach(id => {
                         const r = data[id];
-                        const dist = r.distancia || 'Calculando...';
-                        const comb = r.combustible || 'Pendiente';
+                        const dist = r.distancia || 'N/A';
+                        const comb = r.combustible || 'N/A';
 
                         tbody.innerHTML += `<tr>
                             <td><b>${id}</b></td>
@@ -244,7 +261,7 @@
                                 iconSize: [25, 41], iconAnchor: [12, 41]
                             });
                             const marker = L.marker([r.origenLat, r.origenLng], { icon: iconoOrigenVerde }).addTo(map)
-                                .bindPopup(`<b>ID:</b> ${id}<br><b>Conductor:</b> ${r.conductor}<br><b>Distancia:</b> ${dist}`);
+                                .bindPopup(`<b>ID:</b> ${id}<br><b>Conductor:</b> ${r.conductor}<br><b>Costo Combustible:</b> ${comb}`);
                             markersMap[id] = marker;
                         }
                     });
