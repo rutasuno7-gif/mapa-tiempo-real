@@ -14,7 +14,7 @@
         .roles-nav a { color: white; text-decoration: none; background: #34495e; padding: 8px 15px; border-radius: 4px; font-size: 14px; font-weight: bold; }
         .panel-rol { display: none; padding: 15px; background: #ffffff; border-bottom: 2px solid #ddd; gap: 10px; flex-wrap: wrap; align-items: center; }
         .panel-rol.activo { display: flex; }
-        input[type="text"], input[type="password"], select { padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; flex: 1; min-width: 150px; }
+        input[type="text"], input[type="password"], input[type="number"], select { padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; flex: 1; min-width: 150px; }
         button.accion { padding: 10px 15px; background: #2980b9; color: white; cursor: pointer; border: none; font-weight: bold; border-radius: 4px; }
         button.accion:hover { background: #2471a3; }
         button.eliminar { background: #c0392b; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
@@ -63,9 +63,12 @@
             <option value="diesel">Diésel ($1.530/L)</option>
         </select>
 
+        <!-- NUEVO: Campo para indicar el valor por kilómetro -->
+        <input type="number" id="adminValorKm" placeholder="Valor por km (Ej: 600)" value="600" />
+
         <button type="button" class="accion" id="btnGuardarRuta">Guardar Ruta</button>
         <button type="button" class="accion" id="btnExportarExcel" style="background: #27ae60;">Exportar Excel</button>
-        <div class="hint">💡 El costo se calcula en base a un rendimiento estándar de 12 km/L y los precios reales del combustible.</div>
+        <div class="hint">💡 El costo de combustible se calcula a 12 km/L. El valor por km multiplica la distancia para estimar la tarifa total del pasajero.</div>
         
         <div class="admin-table-container">
             <table>
@@ -77,6 +80,7 @@
                         <th>Conductor</th>
                         <th>Distancia</th>
                         <th>Combustible Est.</th>
+                        <th>Tarifa por Km (Total)</th> <!-- NUEVA COLUMNA -->
                         <th>Estado</th>
                         <th>Acción</th>
                     </tr>
@@ -121,7 +125,7 @@
                 document.getElementById('panel-admin').classList.add('activo');
                 cargarRutasAdmin();
             } else {
-                alert("Clave de Administrador incorrecta."); // Alerta limpia sin mostrar la clave
+                alert("Clave de Administrador incorrecta.");
             }
         }
 
@@ -140,7 +144,7 @@
             } catch (e) { return null; }
         }
 
-        async function calcularRutaYCombustible(lat1, lon1, lat2, lon2, tipoCombustible) {
+        async function calcularRutaYCombustible(lat1, lon1, lat2, lon2, tipoCombustible, valorKm) {
             const preciosCombustible = {
                 "93": 1575,
                 "95": 1591,
@@ -157,18 +161,23 @@
 
                 if (data.routes && data.routes.length > 0) {
                     const distanciaMetros = data.routes[0].distance;
-                    const distanciaKm = (distanciaMetros / 1000).toFixed(1);
+                    const distanciaKmNum = distanciaMetros / 1000;
+                    const distanciaKmText = distanciaKmNum.toFixed(1);
 
                     const rendimiento = 12; 
-                    const costoTotal = Math.round((distanciaKm / rendimiento) * precioLitro);
+                    const costoCombustible = Math.round((distanciaKmNum / rendimiento) * precioLitro);
+                    
+                    // CÁLCULO NUEVO: Distancia numérica por el valor indicado por kilómetro
+                    const valorPorKmTotal = Math.round(distanciaKmNum * (parseFloat(valorKm) || 0));
 
                     return {
-                        distanciaText: `${distanciaKm} km`,
-                        costoText: `$${costoTotal.toLocaleString('es-CL')} CLP`
+                        distanciaText: `${distanciaKmText} km`,
+                        costoText: `$${costoCombustible.toLocaleString('es-CL')} CLP`,
+                        tarifaKmText: `$${valorPorKmTotal.toLocaleString('es-CL')} CLP`
                     };
                 }
             } catch (e) { console.error(e); }
-            return { distanciaText: "N/A", costoText: "N/A" };
+            return { distanciaText: "N/A", costoText: "N/A", tarifaKmText: "N/A" };
         }
 
         document.getElementById('btnGuardarRuta').addEventListener('click', async () => {
@@ -177,13 +186,14 @@
             const destinoStr = document.getElementById('adminDestino').value.trim();
             const conductor = document.getElementById('adminConductor').value.trim();
             const tipoCombustible = document.getElementById('adminCombustibleTipo').value;
+            const valorKm = document.getElementById('adminValorKm').value;
 
             if (!viajeId || !origenStr || !destinoStr) {
                 alert("Completa los campos obligatorios.");
                 return;
             }
 
-            alert("Buscando coordenadas y calculando costo con valores reales...");
+            alert("Buscando coordenadas y calculando valores...");
             const coordOrigen = await obtenerCoordenadas(origenStr);
             const coordDestino = await obtenerCoordenadas(destinoStr);
 
@@ -192,7 +202,7 @@
                 return;
             }
 
-            const calculo = await calcularRutaYCombustible(coordOrigen.lat, coordOrigen.lng, coordDestino.lat, coordDestino.lng, tipoCombustible);
+            const calculo = await calcularRutaYCombustible(coordOrigen.lat, coordOrigen.lng, coordDestino.lat, coordDestino.lng, tipoCombustible, valorKm);
 
             set(ref(db, 'viajes/' + viajeId), {
                 origen: origenStr, 
@@ -204,9 +214,10 @@
                 destLng: coordDestino.lng, 
                 distancia: calculo.distanciaText,
                 combustible: calculo.costoText,
+                tarifaKmTotal: calculo.tarifaKmText, // NUEVO CAMPO EN FIREBASE
                 estado: "Asignado"
             }).then(() => {
-                alert(`¡Ruta ${viajeId} creada con éxito!\nDistancia: ${calculo.distanciaText}\nCosto est. (Combustible): ${calculo.costoText}`);
+                alert(`¡Ruta ${viajeId} creada con éxito!\nDistancia: ${calculo.distanciaText}\nCosto Combustible: ${calculo.costoText}\nTarifa por Km: ${calculo.tarifaKmText}`);
                 document.getElementById('adminViajeId').value = '';
                 document.getElementById('adminOrigen').value = '';
                 document.getElementById('adminDestino').value = '';
@@ -241,6 +252,7 @@
                         const r = data[id];
                         const dist = r.distancia || 'N/A';
                         const comb = r.combustible || 'N/A';
+                        const tarifaKm = r.tarifaKmTotal || 'N/A'; // NUEVO VALOR
 
                         tbody.innerHTML += `<tr>
                             <td><b>${id}</b></td>
@@ -249,6 +261,7 @@
                             <td>${r.conductor}</td>
                             <td><b>${dist}</b></td>
                             <td style="color: #27ae60; font-weight: bold;">${comb}</td>
+                            <td style="color: #2980b9; font-weight: bold;">${tarifaKm}</td>
                             <td>${r.estado}</td>
                             <td><button class="eliminar" onclick="eliminarRuta('${id}')">Eliminar</button></td>
                         </tr>`;
@@ -260,13 +273,13 @@
                                 iconSize: [25, 41], iconAnchor: [12, 41]
                             });
                             const marker = L.marker([r.origenLat, r.origenLng], { icon: iconoOrigenVerde }).addTo(map)
-                                .bindPopup(`<b>ID:</b> ${id}<br><b>Conductor:</b> ${r.conductor}<br><b>Costo Combustible:</b> ${comb}`);
+                                .bindPopup(`<b>ID:</b> ${id}<br><b>Conductor:</b> ${r.conductor}<br><b>Tarifa Total:</b> ${tarifaKm}`);
                             markersMap[id] = marker;
                         }
                     });
                 } else {
                     todasLasRutasData = {};
-                    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">No hay rutas registradas</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;">No hay rutas registradas</td></tr>`;
                 }
             });
         }
@@ -280,6 +293,7 @@
                 "Conductor": todasLasRutasData[id].conductor, 
                 "Distancia": todasLasRutasData[id].distancia || 'N/A',
                 "Gasto Combustible Est.": todasLasRutasData[id].combustible || 'N/A',
+                "Tarifa por Km (Total)": todasLasRutasData[id].tarifaKmTotal || 'N/A', // NUEVA COLUMNA EN EXCEL
                 "Estado": todasLasRutasData[id].estado
             }));
             const ws = XLSX.utils.json_to_sheet(arrayDatos);
