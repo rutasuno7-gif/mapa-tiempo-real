@@ -34,7 +34,7 @@
 <body>
 
     <header>
-        <h2>Panel de Administración</h2>
+        <h2>Panel de Administración - BRTUR Chile</h2>
         <div class="roles-nav">
             <a href="conductor.html" target="_blank">Ir a Conductor ➔</a>
             <a href="pasajero.html" target="_blank">Ir a Pasajero ➔</a>
@@ -71,7 +71,6 @@
 
         <button type="button" class="accion" id="btnGuardarRuta">Guardar Ruta</button>
         <button type="button" class="accion" id="btnExportarExcel" style="background: #27ae60;">Exportar Excel</button>
-        <!-- NUEVO: Botón Generar Cotización al lado de Exportar Excel -->
         <button type="button" class="accion" id="btnGenerarCotizacion" style="background: #8e44ad;">Generar Cotización</button>
 
         <div class="hint">💡 El costo de combustible se calcula a 12 km/L. El valor por km multiplica la distancia para estimar la tarifa total del pasajero.</div>
@@ -299,7 +298,7 @@
             checkboxes.forEach(chk => chk.checked = e.target.checked);
         });
 
-        // Lógica del botón Generar Cotización en PDF (Formato FONOIP SPA)
+        // Lógica del botón Generar Cotización en PDF (Formato BRTUR Chile)
         document.getElementById('btnGenerarCotizacion').addEventListener('click', () => {
             const seleccionados = document.querySelectorAll('.check-item:checked');
             if (seleccionados.length === 0) {
@@ -314,18 +313,18 @@
                 const idRuta = chk.dataset.id;
                 const datosRuta = todasLasRutasData[idRuta];
                 if (datosRuta) {
-                    const descripcion = `Ruta ${idRuta}: ${datosRuta.origen} -> ${datosRuta.destino} (Conductor: ${datosRuta.conductor})`;
-                    const precioUnitario = datosRuta.tarifaNumerica || 5000;
+                    // Detalle solicitado: Pasajero/Conductor, Dirección inicio, término y kilómetros
+                    const descripcion = `Pasajero/Ruta: ${idRuta}\nInicio: ${datosRuta.origen}\nTérmino: ${datosRuta.destino}\nDistancia: ${datosRuta.distancia}`;
+                    const valorServicio = datosRuta.tarifaNumerica || 0;
                     
                     itemsCotizacion.push([
                         descripcion,
-                        "1,00",
-                        `$ ${precioUnitario.toLocaleString('es-CL', {minimumFractionDigits: 2})}`,
-                        "0,00",
-                        `$ ${precioUnitario.toLocaleString('es-CL', {minimumFractionDigits: 2})}`
+                        "Viaje comercial",
+                        `$ ${valorServicio.toLocaleString('es-CL', {minimumFractionDigits: 2})}`,
+                        `$ ${valorServicio.toLocaleString('es-CL', {minimumFractionDigits: 2})}`
                     ]);
 
-                    subtotalGeneral += precioUnitario;
+                    subtotalGeneral += valorServicio;
                 }
             });
 
@@ -337,25 +336,25 @@
             const doc = new jsPDF();
 
             try {
-                // Encabezado FONOIP SPA
+                // Encabezado BRTUR Chile
                 doc.setFont("helvetica", "bold");
                 doc.setFontSize(14);
-                doc.text("FONOIP SPA", 14, 20);
+                doc.text("BRTUR CHILE", 14, 20);
                 
                 doc.setFont("helvetica", "normal");
                 doc.setFontSize(9);
-                doc.text("R.U.T.: 76.104.754-K", 14, 25);
-                doc.text("Dirección: MOISES CHACON 46, El Monte - Metropolitana", 14, 30);
-                doc.text("Telefono: 229479000 | E-mail: facturacion@fonoip.com", 14, 35);
+                doc.text("R.U.T.: 76.XXX.XXX-X", 14, 25); // Ajusta tu RUT si es necesario
+                doc.text("Dirección: Santiago - Chile", 14, 30);
+                doc.text("E-mail: contacto@brturchile.com.br", 14, 35);
 
                 // Documento info (Derecha)
                 doc.setFont("helvetica", "bold");
                 doc.setFontSize(12);
-                doc.text("COTIZACIÓN N° 1471", 140, 20);
+                doc.text("COTIZACIÓN N° 1471", 135, 20);
                 doc.setFont("helvetica", "normal");
                 doc.setFontSize(9);
-                doc.text("Fecha: " + new Date().toLocaleDateString('es-CL'), 140, 26);
-                doc.text("Validez: 10 día(s)", 140, 31);
+                doc.text("Fecha: " + new Date().toLocaleDateString('es-CL'), 135, 26);
+                doc.text("Validez: 10 día(s)", 135, 31);
 
                 doc.setLineWidth(0.3);
                 doc.line(14, 40, 196, 40);
@@ -404,10 +403,10 @@
 
                 doc.line(14, 77, 196, 77);
 
-                // Tabla de ítems con AutoTable
+                // Tabla de ítems con AutoTable (Sin % Descuento, indicando 'Viaje comercial' y valor del servicio)
                 doc.autoTable({
                     startY: 82,
-                    head: [['ITEM CANTIDAD', 'PRECIO UNIT.', '%DESCTO.', 'SUBTOTAL']],
+                    head: [['ITEM / RECORRIDO', 'CANTIDAD', 'VALOR SERVICIO', 'SUBTOTAL']],
                     body: itemsCotizacion,
                     theme: 'grid',
                     headStyles: { fillColor: [41, 128, 185] },
@@ -428,20 +427,17 @@
                 doc.text("SUBTOTAL", montoX, finalY);
                 doc.text(`$ ${neto.toLocaleString('es-CL', {minimumFractionDigits: 2})}`, 196, finalY, { align: 'right' });
 
-                doc.text("DCTO 0,00 %", montoX, finalY + 5);
-                doc.text("$ 0,00", 196, finalY + 5, { align: 'right' });
+                doc.text("NETO", montoX, finalY + 6);
+                doc.text(`$ ${neto.toLocaleString('es-CL', {minimumFractionDigits: 2})}`, 196, finalY + 6, { align: 'right' });
 
-                doc.text("NETO", montoX, finalY + 10);
-                doc.text(`$ ${neto.toLocaleString('es-CL', {minimumFractionDigits: 2})}`, 196, finalY + 10, { align: 'right' });
-
-                doc.text("I.V.A.", montoX, finalY + 15);
-                doc.text(`$ ${iva.toLocaleString('es-CL', {minimumFractionDigits: 2})}`, 196, finalY + 15, { align: 'right' });
+                doc.text("I.V.A.", montoX, finalY + 12);
+                doc.text(`$ ${iva.toLocaleString('es-CL', {minimumFractionDigits: 2})}`, 196, finalY + 12, { align: 'right' });
 
                 doc.setFont("helvetica", "bold");
-                doc.text("TOTAL", montoX, finalY + 20);
-                doc.text(`$ ${total.toLocaleString('es-CL', {minimumFractionDigits: 2})}`, 196, finalY + 20, { align: 'right' });
+                doc.text("TOTAL", montoX, finalY + 18);
+                doc.text(`$ ${total.toLocaleString('es-CL', {minimumFractionDigits: 2})}`, 196, finalY + 18, { align: 'right' });
 
-                doc.save("Cotizacion_Fonoip_1471.pdf");
+                doc.save("Cotizacion_BRTUR_Chile.pdf");
             } catch (error) {
                 console.error("Error al generar el PDF:", error);
                 alert("Hubo un error al generar el archivo PDF.");
