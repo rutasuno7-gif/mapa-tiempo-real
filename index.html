@@ -3,114 +3,341 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Cotizaciones - Fonoip</title>
-    <!-- Bootstrap CSS (Opcional, para que los botones y tablas se vean ordenados) -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="container my-5">
-
-    <h2 class="mb-4">Gestión de Registros y Cotizaciones</h2>
-
-    <!-- 1. Botonera (Al lado de la descarga de Excel) -->
-    <div class="acciones-tabla mb-3 d-flex gap-2">
-        <button id="btnExportarExcel" class="btn btn-success">Descargar Excel</button>
-        <button id="btnGenerarCotizacion" class="btn btn-primary">Generar Cotización</button>
-    </div>
-
-    <!-- 2. Tabla con los checkboxes (Tics) en cada registro -->
-    <div class="table-responsive">
-        <table class="table table-bordered table-striped" id="tablaRegistros">
-            <thead class="table-light">
-                <tr>
-                    <th style="width: 50px; text-align: center;">
-                        <input type="checkbox" id="seleccionarTodo" class="form-check-input">
-                    </th>
-                    <th>Ítem / Descripción</th>
-                    <th>Cantidad</th>
-                    <th>Precio Unit.</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Fila de ejemplo 1 -->
-                <tr>
-                    <td class="text-center">
-                        <input type="checkbox" class="form-check-input check-item" 
-                               data-desc="did prefijo 9 prepago (40 canales salida)" 
-                               data-precio="5000" 
-                               data-cant="1">
-                    </td>
-                    <td>did prefijo 9 prepago (40 canales salida)</td>
-                    <td>1,00</td>
-                    <td>$ 5.000,00</td>
-                </tr>
-                <!-- Fila de ejemplo 2 (puedes agregar más registros dinámicamente desde tu base de datos) -->
-                <tr>
-                    <td class="text-center">
-                        <input type="checkbox" class="form-check-input check-item" 
-                               data-desc="Soporte técnico avanzado mensual" 
-                               data-precio="15000" 
-                               data-cant="2">
-                    </td>
-                    <td>Soporte técnico avanzado mensual</td>
-                    <td>2,00</td>
-                    <td>$ 15.000,00</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
-    <!-- 3. Librerías necesarias para generar el PDF (jsPDF y AutoTable) -->
+    <title>Administración - Plataforma de Rutas</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Librerías para generar el PDF de cotizaciones -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; display: flex; flex-direction: column; height: 100vh; background: #f4f6f7; }
+        header { background: #2c3e50; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .roles-nav a { color: white; text-decoration: none; background: #34495e; padding: 8px 15px; border-radius: 4px; font-size: 14px; font-weight: bold; }
+        .panel-rol { display: none; padding: 15px; background: #ffffff; border-bottom: 2px solid #ddd; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .panel-rol.activo { display: flex; }
+        input[type="text"], input[type="password"], input[type="number"], select { padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; flex: 1; min-width: 150px; }
+        button.accion { padding: 10px 15px; background: #2980b9; color: white; cursor: pointer; border: none; font-weight: bold; border-radius: 4px; }
+        button.accion:hover { background: #2471a3; }
+        button.eliminar { background: #c0392b; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        button.eliminar:hover { background: #a93226; }
+        #map { flex-grow: 1; width: 100%; }
+        .admin-table-container { width: 100%; max-height: 180px; overflow-y: auto; margin-top: 10px; border: 1px solid #ddd; background: #fff; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { padding: 6px 10px; border-bottom: 1px solid #eee; text-align: left; }
+        th { background: #f8f9fa; }
+        .login-box { display: flex; gap: 10px; width: 100%; max-width: 400px; margin-top: 5px; }
+        .hint { font-size: 12px; color: #666; width: 100%; margin-top: -5px; }
+    </style>
+</head>
+<body>
 
-    <!-- 4. Lógica completa en JavaScript -->
-    <script>
-        // Funcionalidad para seleccionar o deseleccionar todos los checkboxes
+    <header>
+        <h2>Panel de Administración</h2>
+        <div class="roles-nav">
+            <a href="conductor.html" target="_blank">Ir a Conductor ➔</a>
+            <a href="pasajero.html" target="_blank">Ir a Pasajero ➔</a>
+        </div>
+    </header>
+
+    <!-- LOGIN ADMIN -->
+    <div id="panel-admin-login" class="panel-rol activo" style="flex-direction: column; align-items: flex-start;">
+        <strong>Acceso Administrador:</strong>
+        <div class="login-box">
+            <input type="password" id="adminPasswordInput" placeholder="Ingrese clave">
+            <button class="accion" id="btnLogAdmin">Entrar</button>
+        </div>
+    </div>
+
+    <!-- PANEL ADMINISTRADOR -->
+    <div id="panel-admin" class="panel-rol">
+        <strong>Crear y Asignar Ruta:</strong>
+        <input type="text" id="adminViajeId" placeholder="ID (ej. ruta-01)" />
+        <input type="text" id="adminOrigen" placeholder="Origen (Ej: Macul 3700)" />
+        <input type="text" id="adminDestino" placeholder="Destino (Ej: San Bernardo)" />
+        <input type="text" id="adminConductor" placeholder="Conductor" />
+        
+        <!-- Selector de Tipo de Combustible -->
+        <select id="adminCombustibleTipo">
+            <option value="93">Bencina 93 ($1.575/L)</option>
+            <option value="95">Bencina 95 ($1.591/L)</option>
+            <option value="97">Bencina 97 ($1.629/L)</option>
+            <option value="diesel">Diésel ($1.530/L)</option>
+        </select>
+
+        <!-- Campo para indicar el valor por kilómetro -->
+        <input type="number" id="adminValorKm" placeholder="Valor por km (Ej: 600)" value="600" />
+
+        <button type="button" class="accion" id="btnGuardarRuta">Guardar Ruta</button>
+        <button type="button" class="accion" id="btnExportarExcel" style="background: #27ae60;">Exportar Excel</button>
+        <!-- NUEVO: Botón Generar Cotización al lado de Exportar Excel -->
+        <button type="button" class="accion" id="btnGenerarCotizacion" style="background: #8e44ad;">Generar Cotización</button>
+
+        <div class="hint">💡 El costo de combustible se calcula a 12 km/L. El valor por km multiplica la distancia para estimar la tarifa total del pasajero.</div>
+        
+        <div class="admin-table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 40px; text-align: center;"><input type="checkbox" id="seleccionarTodo"></th>
+                        <th>ID Viaje</th>
+                        <th>Origen</th>
+                        <th>Destino</th>
+                        <th>Conductor</th>
+                        <th>Distancia</th>
+                        <th>Combustible Est.</th>
+                        <th>Tarifa por Km (Total)</th>
+                        <th>Estado</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaRutasBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+        import { getDatabase, ref, set, remove, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBx8q4zbeMNBi5s209ZMNUnF3gKI8MDdc0",
+            authDomain: "rutas-234e4.firebaseapp.com",
+            databaseURL: "https://rutas-234e4-default-rtdb.firebaseio.com",
+            projectId: "rutas-234e4",
+            storageBucket: "rutas-234e4.firebasestorage.app",
+            messagingSenderId: "169559501428",
+            appId: "1:169559501428:web:419b64babc56d1da6eff21",
+            measurementId: "G-GDNE6V9783"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        const map = L.map('map').setView([-33.4489, -70.6693], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+
+        let todasLasRutasData = {};
+        let markersMap = {};
+
+        function verificarLogin() {
+            const pass = document.getElementById('adminPasswordInput').value.trim();
+            if (pass === "Rutas2026") {
+                document.getElementById('panel-admin-login').classList.remove('activo');
+                document.getElementById('panel-admin').classList.add('activo');
+                cargarRutasAdmin();
+            } else {
+                alert("Clave de Administrador incorrecta.");
+            }
+        }
+
+        document.getElementById('btnLogAdmin').addEventListener('click', verificarLogin);
+        document.getElementById('adminPasswordInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') verificarLogin();
+        });
+
+        async function obtenerCoordenadas(direccion) {
+            try {
+                let query = direccion.toLowerCase().includes('chile') ? direccion : direccion + ", Chile";
+                const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                return data.length > 0 ? { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) } : null;
+            } catch (e) { return null; }
+        }
+
+        async function calcularRutaYCombustible(lat1, lon1, lat2, lon2, tipoCombustible, valorKm) {
+            const preciosCombustible = {
+                "93": 1575,
+                "95": 1591,
+                "97": 1629,
+                "diesel": 1530
+            };
+
+            const precioLitro = preciosCombustible[tipoCombustible] || 1575;
+
+            try {
+                const url = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.routes && data.routes.length > 0) {
+                    const distanciaMetros = data.routes[0].distance;
+                    const distanciaKmNum = distanciaMetros / 1000;
+                    const distanciaKmText = distanciaKmNum.toFixed(1);
+
+                    const rendimiento = 12; 
+                    const costoCombustible = Math.round((distanciaKmNum / rendimiento) * precioLitro);
+                    
+                    const valorPorKmTotal = Math.round(distanciaKmNum * (parseFloat(valorKm) || 0));
+
+                    return {
+                        distanciaText: `${distanciaKmText} km`,
+                        costoText: `$${costoCombustible.toLocaleString('es-CL')} CLP`,
+                        tarifaKmText: `$${valorPorKmTotal.toLocaleString('es-CL')} CLP`,
+                        valorNumericoTarifa: valorPorKmTotal
+                    };
+                }
+            } catch (e) { console.error(e); }
+            return { distanciaText: "N/A", costoText: "N/A", tarifaKmText: "N/A", valorNumericoTarifa: 0 };
+        }
+
+        document.getElementById('btnGuardarRuta').addEventListener('click', async () => {
+            const viajeId = document.getElementById('adminViajeId').value.trim();
+            const origenStr = document.getElementById('adminOrigen').value.trim();
+            const destinoStr = document.getElementById('adminDestino').value.trim();
+            const conductor = document.getElementById('adminConductor').value.trim();
+            const tipoCombustible = document.getElementById('adminCombustibleTipo').value;
+            const valorKm = document.getElementById('adminValorKm').value;
+
+            if (!viajeId || !origenStr || !destinoStr) {
+                alert("Completa los campos obligatorios.");
+                return;
+            }
+
+            alert("Buscando coordenadas y calculando valores...");
+            const coordOrigen = await obtenerCoordenadas(origenStr);
+            const coordDestino = await obtenerCoordenadas(destinoStr);
+
+            if (!coordOrigen || !coordDestino) {
+                alert("No se pudieron ubicar una o ambas direcciones. Intenta ingresar la comuna.");
+                return;
+            }
+
+            const calculo = await calcularRutaYCombustible(coordOrigen.lat, coordOrigen.lng, coordDestino.lat, coordDestino.lng, tipoCombustible, valorKm);
+
+            set(ref(db, 'viajes/' + viajeId), {
+                origen: origenStr, 
+                destino: destinoStr, 
+                conductor: conductor || "Sin asignar",
+                origenLat: coordOrigen.lat, 
+                origenLng: coordOrigen.lng, 
+                destLat: coordDestino.lat, 
+                destLng: coordDestino.lng, 
+                distancia: calculo.distanciaText,
+                combustible: calculo.costoText,
+                tarifaKmTotal: calculo.tarifaKmText,
+                tarifaNumerica: calculo.valorNumericoTarifa,
+                estado: "Asignado"
+            }).then(() => {
+                alert(`¡Ruta ${viajeId} creada con éxito!\nDistancia: ${calculo.distanciaText}\nCosto Combustible: ${calculo.costoText}\nTarifa por Km: ${calculo.tarifaKmText}`);
+                document.getElementById('adminViajeId').value = '';
+                document.getElementById('adminOrigen').value = '';
+                document.getElementById('adminDestino').value = '';
+                document.getElementById('adminConductor').value = '';
+            });
+        });
+
+        window.eliminarRuta = function(viajeId) {
+            if (confirm(`¿Estás seguro de eliminar la ruta ${viajeId}?`)) {
+                remove(ref(db, 'viajes/' + viajeId)).then(() => {
+                    if (markersMap[viajeId]) {
+                        map.removeLayer(markersMap[viajeId]);
+                        delete markersMap[viajeId];
+                    }
+                    alert("Ruta eliminada correctamente.");
+                });
+            }
+        };
+
+        function cargarRutasAdmin() {
+            onValue(ref(db, 'viajes'), (snapshot) => {
+                const data = snapshot.val();
+                const tbody = document.getElementById('tablaRutasBody');
+                tbody.innerHTML = '';
+                
+                Object.values(markersMap).forEach(m => map.removeLayer(m));
+                markersMap = {};
+
+                if (data) {
+                    todasLasRutasData = data;
+                    Object.keys(data).forEach(id => {
+                        const r = data[id];
+                        const dist = r.distancia || 'N/A';
+                        const comb = r.combustible || 'N/A';
+                        const tarifaKm = r.tarifaKmTotal || 'N/A';
+
+                        tbody.innerHTML += `<tr>
+                            <td style="text-align: center;"><input type="checkbox" class="check-item" data-id="${id}"></td>
+                            <td><b>${id}</b></td>
+                            <td>${r.origen}</td>
+                            <td>${r.destino}</td>
+                            <td>${r.conductor}</td>
+                            <td><b>${dist}</b></td>
+                            <td style="color: #27ae60; font-weight: bold;">${comb}</td>
+                            <td style="color: #2980b9; font-weight: bold;">${tarifaKm}</td>
+                            <td>${r.estado}</td>
+                            <td><button class="eliminar" onclick="eliminarRuta('${id}')">Eliminar</button></td>
+                        </tr>`;
+
+                        if (r.origenLat && r.origenLng) {
+                            const iconoOrigenVerde = L.icon({
+                                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+                                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+                                iconSize: [25, 41], iconAnchor: [12, 41]
+                            });
+                            const marker = L.marker([r.origenLat, r.origenLng], { icon: iconoOrigenVerde }).addTo(map)
+                                .bindPopup(`<b>ID:</b> ${id}<br><b>Conductor:</b> ${r.conductor}<br><b>Tarifa Total:</b> ${tarifaKm}`);
+                            markersMap[id] = marker;
+                        }
+                    });
+                } else {
+                    todasLasRutasData = {};
+                    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;">No hay rutas registradas</td></tr>`;
+                }
+            });
+        }
+
+        // Seleccionar / Deseleccionar todos los tiques
         document.getElementById('seleccionarTodo').addEventListener('change', function(e) {
             const checkboxes = document.querySelectorAll('.check-item');
             checkboxes.forEach(chk => chk.checked = e.target.checked);
         });
 
-        // Acción al hacer clic en el botón Generar Cotización
-        document.getElementById('btnGenerarCotizacion').addEventListener('click', function() {
+        // Lógica del botón Generar Cotización en PDF (Formato FONOIP SPA)
+        document.getElementById('btnGenerarCotizacion').addEventListener('click', () => {
             const seleccionados = document.querySelectorAll('.check-item:checked');
-            
             if (seleccionados.length === 0) {
-                alert('Por favor, selecciona al menos un registro con el tique para generar la cotización.');
+                alert("Por favor, selecciona al menos un registro con el tique para generar la cotización.");
                 return;
             }
 
             let itemsCotizacion = [];
             let subtotalGeneral = 0;
 
-            // Recorrer únicamente los elementos tiqueados
             seleccionados.forEach(chk => {
-                const cantidad = parseFloat(chk.dataset.cant);
-                const precioUnit = parseFloat(chk.dataset.precio);
-                const subtotal = cantidad * precioUnit;
-                
-                itemsCotizacion.push([
-                    chk.dataset.desc,
-                    cantidad.toFixed(2).replace('.', ','),
-                    `$ ${precioUnit.toLocaleString('es-CL', {minimumFractionDigits: 2})}`,
-                    "0,00",
-                    `$ ${subtotal.toLocaleString('es-CL', {minimumFractionDigits: 2})}`
-                ]);
+                const idRuta = chk.dataset.id;
+                const datosRuta = todasLasRutasData[idRuta];
+                if (datosRuta) {
+                    const descripcion = `Ruta ${idRuta}: ${datosRuta.origen} -> ${datosRuta.destino} (Conductor: ${datosRuta.conductor})`;
+                    const precioUnitario = datosRuta.tarifaNumerica || 5000;
+                    
+                    itemsCotizacion.push([
+                        descripcion,
+                        "1,00",
+                        `$ ${precioUnitario.toLocaleString('es-CL', {minimumFractionDigits: 2})}`,
+                        "0,00",
+                        `$ ${precioUnitario.toLocaleString('es-CL', {minimumFractionDigits: 2})}`
+                    ]);
 
-                subtotalGeneral += subtotal;
+                    subtotalGeneral += precioUnitario;
+                }
             });
 
-            // Cálculos financieros (Chile - IVA 19%)
             const neto = subtotalGeneral;
             const iva = neto * 0.19;
             const total = neto + iva;
 
-            // Inicializar jsPDF
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
 
             try {
-                // --- ENCABEZADO EMPRESA (FONOIP SPA) ---
+                // Encabezado FONOIP SPA
                 doc.setFont("helvetica", "bold");
                 doc.setFontSize(14);
                 doc.text("FONOIP SPA", 14, 20);
@@ -121,7 +348,7 @@
                 doc.text("Dirección: MOISES CHACON 46, El Monte - Metropolitana", 14, 30);
                 doc.text("Telefono: 229479000 | E-mail: facturacion@fonoip.com", 14, 35);
 
-                // --- DATOS DEL DOCUMENTO (Derecha) ---
+                // Documento info (Derecha)
                 doc.setFont("helvetica", "bold");
                 doc.setFontSize(12);
                 doc.text("COTIZACIÓN N° 1471", 140, 20);
@@ -130,11 +357,10 @@
                 doc.text("Fecha: " + new Date().toLocaleDateString('es-CL'), 140, 26);
                 doc.text("Validez: 10 día(s)", 140, 31);
 
-                // Línea divisoria
                 doc.setLineWidth(0.3);
                 doc.line(14, 40, 196, 40);
 
-                // --- DATOS DEL CLIENTE ---
+                // Datos del cliente
                 doc.setFont("helvetica", "bold");
                 doc.setFontSize(9);
                 doc.text("Señores :", 14, 47);
@@ -178,17 +404,16 @@
 
                 doc.line(14, 77, 196, 77);
 
-                // --- TABLA DE ITEMS SELECCIONADOS ---
+                // Tabla de ítems con AutoTable
                 doc.autoTable({
                     startY: 82,
-                    head: [['ITEM / DESCRIPCIÓN', 'CANTIDAD', 'PRECIO UNIT.', '%DESCTO.', 'SUBTOTAL']],
+                    head: [['ITEM CANTIDAD', 'PRECIO UNIT.', '%DESCTO.', 'SUBTOTAL']],
                     body: itemsCotizacion,
                     theme: 'grid',
-                    headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255] },
+                    headStyles: { fillColor: [41, 128, 185] },
                     styles: { fontSize: 8 }
                 });
 
-                // --- CONDICIONES Y TOTALES AL PIE ---
                 let finalY = doc.lastAutoTable.finalY + 10;
                 
                 doc.setFont("helvetica", "bold");
@@ -199,7 +424,6 @@
                 doc.text("Valores dados en Moneda CLP (Peso chileno)", 14, finalY + 10);
                 doc.text("Forma de pago: PAGADO AL CONTADO", 14, finalY + 15);
 
-                // Montos alineados a la derecha
                 let montoX = 135;
                 doc.text("SUBTOTAL", montoX, finalY);
                 doc.text(`$ ${neto.toLocaleString('es-CL', {minimumFractionDigits: 2})}`, 196, finalY, { align: 'right' });
@@ -217,13 +441,29 @@
                 doc.text("TOTAL", montoX, finalY + 20);
                 doc.text(`$ ${total.toLocaleString('es-CL', {minimumFractionDigits: 2})}`, 196, finalY + 20, { align: 'right' });
 
-                // Guardar y descargar el PDF con el nombre correspondiente
                 doc.save("Cotizacion_Fonoip_1471.pdf");
-
             } catch (error) {
                 console.error("Error al generar el PDF:", error);
-                alert("Hubo un error al procesar el archivo PDF.");
+                alert("Hubo un error al generar el archivo PDF.");
             }
+        });
+
+        document.getElementById('btnExportarExcel').addEventListener('click', () => {
+            if (Object.keys(todasLasRutasData).length === 0) { alert("No hay datos para exportar."); return; }
+            const arrayDatos = Object.keys(todasLasRutasData).map(id => ({
+                "ID Viaje": id, 
+                "Origen": todasLasRutasData[id].origen, 
+                "Destino": todasLasRutasData[id].destino,
+                "Conductor": todasLasRutasData[id].conductor, 
+                "Distancia": todasLasRutasData[id].distancia || 'N/A',
+                "Gasto Combustible Est.": todasLasRutasData[id].combustible || 'N/A',
+                "Tarifa por Km (Total)": todasLasRutasData[id].tarifaKmTotal || 'N/A',
+                "Estado": todasLasRutasData[id].estado
+            }));
+            const ws = XLSX.utils.json_to_sheet(arrayDatos);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Rutas");
+            XLSX.writeFile(wb, "Reporte_Rutas.xlsx");
         });
     </script>
 </body>
