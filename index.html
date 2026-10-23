@@ -221,7 +221,7 @@
                 distancia: calculo.distanciaText,
                 combustible: calculo.costoText,
                 tarifaKmTotal: calculo.tarifaKmText,
-                tarifaNumerica: calculo.valorNumericoTarifa,
+                tarifaNumerica: Number(calculo.valorNumericoTarifa) || 0, // Asegura número puro
                 estado: "Asignado"
             }).then(() => {
                 alert(`¡Ruta ${viajeId} creada con éxito!\nDistancia: ${calculo.distanciaText}\nCosto Combustible: ${calculo.costoText}\nTarifa por Km: ${calculo.tarifaKmText}`);
@@ -298,7 +298,7 @@
             checkboxes.forEach(chk => chk.checked = e.target.checked);
         });
 
-        // Lógica del botón Generar Cotización en PDF (Formato BRTUR Chile limpio)
+        // Lógica del botón Generar Cotización en PDF (Formato BRTUR Chile limpio con cálculo correcto)
         document.getElementById('btnGenerarCotizacion').addEventListener('click', () => {
             const seleccionados = document.querySelectorAll('.check-item:checked');
             if (seleccionados.length === 0) {
@@ -314,7 +314,9 @@
                 const datosRuta = todasLasRutasData[idRuta];
                 if (datosRuta) {
                     const descripcion = `Pasajero/Ruta: ${idRuta}\nInicio: ${datosRuta.origen}\nTérmino: ${datosRuta.destino}\nDistancia: ${datosRuta.distancia}`;
-                    const valorServicio = Number(datosRuta.tarifaNumerica) || 0;
+                    
+                    // Asegurar lectura numérica directa
+                    const valorServicio = parseFloat(datosRuta.tarifaNumerica) || 0;
                     
                     itemsCotizacion.push([
                         descripcion,
@@ -336,7 +338,7 @@
             const doc = new jsPDF();
 
             try {
-                // Encabezado BRTUR Chile (Con correo correcto y sin datos de cliente)
+                // Encabezado BRTUR Chile
                 doc.setFont("helvetica", "bold");
                 doc.setFontSize(14);
                 doc.text("BRTUR CHILE", 14, 20);
@@ -356,7 +358,7 @@
                 doc.setLineWidth(0.3);
                 doc.line(14, 42, 196, 42);
 
-                // Tabla de ítems con AutoTable (Incluyendo % Descuento)
+                // Tabla de ítems con AutoTable
                 doc.autoTable({
                     startY: 48,
                     head: [['ITEM / RECORRIDO', 'CANTIDAD', 'VALOR SERVICIO', '% DESCTO.', 'SUBTOTAL']],
@@ -376,7 +378,7 @@
                 doc.text("Valores dados en Moneda CLP (Peso chileno)", 14, finalY + 10);
                 doc.text("Forma de pago: PAGADO AL CONTADO", 14, finalY + 15);
 
-                // Totales y montos correctos alineados a la derecha
+                // Montos y subtotales alineados a la derecha
                 let montoX = 135;
                 doc.text("SUBTOTAL", montoX, finalY);
                 doc.text(`$ ${neto.toLocaleString('es-CL', {minimumFractionDigits: 2})}`, 196, finalY, { align: 'right' });
@@ -405,7 +407,7 @@
                 "Origen": todasLasRutasData[id].origen, 
                 "Destino": todasLasRutasData[id].destino,
                 "Conductor": todasLasRutasData[id].conductor, 
-                "Distancia": todasLasRutasData[id].distancia || 'N/A',
+                "Distancia": todasLasRulasData[id]?.distancia || 'N/A',
                 "Gasto Combustible Est.": todasLasRutasData[id].combustible || 'N/A',
                 "Tarifa por Km (Total)": todasLasRutasData[id].tarifaKmTotal || 'N/A',
                 "Estado": todasLasRutasData[id].estado
