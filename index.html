@@ -177,13 +177,14 @@
 
                     return {
                         distanciaText: `${distanciaKmText} km`,
+                        distanciaNumerica: distanciaKmNum,
                         costoText: `$${costoCombustible.toLocaleString('es-CL')} CLP`,
                         tarifaKmText: `$${valorPorKmTotal.toLocaleString('es-CL')} CLP`,
                         valorNumericoTarifa: valorPorKmTotal
                     };
                 }
             } catch (e) { console.error(e); }
-            return { distanciaText: "N/A", costoText: "N/A", tarifaKmText: "N/A", valorNumericoTarifa: 0 };
+            return { distanciaText: "N/A", distanciaNumerica: 0, costoText: "N/A", tarifaKmText: "N/A", valorNumericoTarifa: 0 };
         }
 
         document.getElementById('btnGuardarRuta').addEventListener('click', async () => {
@@ -219,12 +220,14 @@
                 destLat: coordDestino.lat, 
                 destLng: coordDestino.lng, 
                 distancia: calculo.distanciaText,
+                distanciaNum: calculo.distanciaNumerica,
                 combustible: calculo.costoText,
                 tarifaKmTotal: calculo.tarifaKmText,
-                tarifaNumerica: Number(calculo.valorNumericoTarifa) || 0, // Asegura número puro
+                tarifaNumerica: Number(calculo.valorNumericoTarifa) || 0,
+                valorKmInputUsado: parseFloat(valorKm) || 0,
                 estado: "Asignado"
             }).then(() => {
-                alert(`¡Ruta ${viajeId} creada con éxito!\nDistancia: ${calculo.distanciaText}\nCosto Combustible: ${calculo.costoText}\nTarifa por Km: ${calculo.tarifaKmText}`);
+                alert(`¡Ruta ${viajeId} creada con éxito!\nDistancia: ${calculo.distanciaText}\nTarifa por Km: ${calculo.tarifaKmText}`);
                 document.getElementById('adminViajeId').value = '';
                 document.getElementById('adminOrigen').value = '';
                 document.getElementById('adminDestino').value = '';
@@ -298,7 +301,7 @@
             checkboxes.forEach(chk => chk.checked = e.target.checked);
         });
 
-        // Lógica del botón Generar Cotización en PDF (Formato BRTUR Chile limpio con cálculo correcto)
+        // Lógica del botón Generar Cotización en PDF con extracción garantizada de valores
         document.getElementById('btnGenerarCotizacion').addEventListener('click', () => {
             const seleccionados = document.querySelectorAll('.check-item:checked');
             if (seleccionados.length === 0) {
@@ -315,8 +318,28 @@
                 if (datosRuta) {
                     const descripcion = `Pasajero/Ruta: ${idRuta}\nInicio: ${datosRuta.origen}\nTérmino: ${datosRuta.destino}\nDistancia: ${datosRuta.distancia}`;
                     
-                    // Asegurar lectura numérica directa
-                    const valorServicio = parseFloat(datosRuta.tarifaNumerica) || 0;
+                    // MECANISMO DE RESCATE DE VALOR: 
+                    // 1. Revisa si existe tarifaNumerica directa.
+                    // 2. Si no, extrae los números de la cadena de texto tarifaKmTotal.
+                    // 3. Si aun así falla, calcula multiplicando distanciaNum por el valor por km predeterminado (o 600).
+                    let valorServicio = parseFloat(datosRuta.tarifaNumerica);
+                    
+                    if (!valorServicio || isNaN(valorServicio) || valorServicio === 0) {
+                        if (datosRuta.tarifaKmTotal) {
+                            const limpio = datosRuta.tarifaKmTotal.replace(/[^0-9]/g, '');
+                            valorServicio = parseFloat(limpio) || 0;
+                        }
+                    }
+
+                    if ((!valorServicio || valorServicio === 0) && datosRuta.distanciaNum) {
+                        const vKm = datosRuta.valorKmInputUsado || 600;
+                        valorServicio = Math.round(datosRuta.distanciaNum * vKm);
+                    }
+
+                    // Valor por defecto si todo lo anterior viniera en blanco
+                    if (!valorServicio || isNaN(valorServicio)) {
+                        valorServicio = 5000;
+                    }
                     
                     itemsCotizacion.push([
                         descripcion,
@@ -407,7 +430,7 @@
                 "Origen": todasLasRutasData[id].origen, 
                 "Destino": todasLasRutasData[id].destino,
                 "Conductor": todasLasRutasData[id].conductor, 
-                "Distancia": todasLasRulasData[id]?.distancia || 'N/A',
+                "Distancia": todasLasRutasData[id].distancia || 'N/A',
                 "Gasto Combustible Est.": todasLasRutasData[id].combustible || 'N/A',
                 "Tarifa por Km (Total)": todasLasRutasData[id].tarifaKmTotal || 'N/A',
                 "Estado": todasLasRutasData[id].estado
