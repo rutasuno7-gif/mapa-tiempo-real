@@ -1,179 +1,230 @@
-<!-- 1. Cargar las librerías de jsPDF y AutoTable en tu HTML (en el <head>) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Cotizaciones - Fonoip</title>
+    <!-- Bootstrap CSS (Opcional, para que los botones y tablas se vean ordenados) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container my-5">
 
-<!-- 2. Botonera al lado del Excel -->
-<div class="acciones-tabla mb-3" style="margin-bottom: 20px;">
-    <button id="btnExportarExcel" class="btn btn-success">Descargar Excel</button>
-    <button id="btnGenerarCotizacion" class="btn btn-primary" style="margin-left: 10px;">Generar Cotización</button>
-</div>
+    <h2 class="mb-4">Gestión de Registros y Cotizaciones</h2>
 
-<!-- 3. Tabla con los checkboxes -->
-<table class="table" id="tablaRegistros" border="1" cellpadding="8" cellspacing="0" style="width:100%; border-collapse: collapse;">
-    <thead>
-        <tr style="background-color: #f2f2f2;">
-            <th style="width: 40px; text-align: center;"><input type="checkbox" id="seleccionarTodo"></th>
-            <th>Ítem / Descripción</th>
-            <th>Cantidad</th>
-            <th>Precio Unit.</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td style="text-align: center;"><input type="checkbox" class="check-item" data-desc="did prefijo 9 prepago (40 canales salida)" data-precio="5000" data-cant="1"></td>
-            <td>did prefijo 9 prepago (40 canales salida)</td>
-            <td>1,00</td>
-            <td>$ 5.000,00</td>
-        </tr>
-        <!-- Agrega más filas dinámicamente según tus registros -->
-    </tbody>
-</table>
+    <!-- 1. Botonera (Al lado de la descarga de Excel) -->
+    <div class="acciones-tabla mb-3 d-flex gap-2">
+        <button id="btnExportarExcel" class="btn btn-success">Descargar Excel</button>
+        <button id="btnGenerarCotizacion" class="btn btn-primary">Generar Cotización</button>
+    </div>
 
-<script>
-// Seleccionar / Deseleccionar todos
-document.getElementById('seleccionarTodo').addEventListener('change', function(e) {
-    const checkboxes = document.querySelectorAll('.check-item');
-    checkboxes.forEach(chk => chk.checked = e.target.checked);
-});
+    <!-- 2. Tabla con los checkboxes (Tics) en cada registro -->
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped" id="tablaRegistros">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 50px; text-align: center;">
+                        <input type="checkbox" id="seleccionarTodo" class="form-check-input">
+                    </th>
+                    <th>Ítem / Descripción</th>
+                    <th>Cantidad</th>
+                    <th>Precio Unit.</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Fila de ejemplo 1 -->
+                <tr>
+                    <td class="text-center">
+                        <input type="checkbox" class="form-check-input check-item" 
+                               data-desc="did prefijo 9 prepago (40 canales salida)" 
+                               data-precio="5000" 
+                               data-cant="1">
+                    </td>
+                    <td>did prefijo 9 prepago (40 canales salida)</td>
+                    <td>1,00</td>
+                    <td>$ 5.000,00</td>
+                </tr>
+                <!-- Fila de ejemplo 2 (puedes agregar más registros dinámicamente desde tu base de datos) -->
+                <tr>
+                    <td class="text-center">
+                        <input type="checkbox" class="form-check-input check-item" 
+                               data-desc="Soporte técnico avanzado mensual" 
+                               data-precio="15000" 
+                               data-cant="2">
+                    </td>
+                    <td>Soporte técnico avanzado mensual</td>
+                    <td>2,00</td>
+                    <td>$ 15.000,00</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 
-// Lógica del botón Generar Cotización
-document.getElementById('btnGenerarCotizacion').addEventListener('click', async function() {
-    const seleccionados = document.querySelectorAll('.check-item:checked');
-    
-    if (seleccionados.length === 0) {
-        alert('Por favor, selecciona al menos un registro para generar la cotización.');
-        return;
-    }
+    <!-- 3. Librerías necesarias para generar el PDF (jsPDF y AutoTable) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
-    let itemsCotizacion = [];
-    let subtotalGeneral = 0;
-
-    seleccionados.forEach(chk => {
-        const cantidad = parseFloat(chk.dataset.cant);
-        const precioUnit = parseFloat(chk.dataset.precio);
-        const subtotal = cantidad * precioUnit;
-        
-        itemsCotizacion.push([
-            chk.dataset.desc,
-            cantidad.toFixed(2).replace('.', ','),
-            `$ ${precioUnit.toLocaleString('es-CL', {minimumFractionDigits: 2})}`,
-            "0,00",
-            `$ ${subtotal.toLocaleString('es-CL', {minimumFractionDigits: 2})}`
-        ]);
-
-        subtotalGeneral += subtotal;
-    });
-
-    const neto = subtotalGeneral;
-    const iva = neto * 0.19;
-    const total = neto + iva;
-
-    // Inicializar jsPDF
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    // Intentar cargar el logo desde el sitio web (o usar una URL de imagen base64 si prefieres asegurar el acceso)
-    // Nota: Para evitar bloqueos CORS en el navegador, se recomienda usar una imagen en base64 o asegurarse de que el servidor permita acceso.
-    try {
-        // Ejemplo de inserción de cabecera institucional
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(14);
-        doc.text("FONOIP SPA", 14, 20);
-        
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        doc.text("R.U.T.: 76.104.754-K", 14, 25);
-        doc.text("Dirección: MOISES CHACON 46, El Monte - Metropolitana", 14, 30);
-        doc.text("Teléfono: 229479000 | E-mail: facturacion@fonoip.com", 14, 35);
-
-        // Número de cotización y fecha a la derecha
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(12);
-        doc.text("COTIZACIÓN N° 1471", 140, 20);
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        doc.text("Fecha: " + new Date().toLocaleDateString('es-CL'), 140, 26);
-        doc.text("Validez: 10 día(s)", 140, 31);
-
-        // Línea divisoria
-        doc.setLineWidth(0.5);
-        doc.line(14, 40, 196, 40);
-
-        // Datos del cliente
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(10);
-        doc.text("Señores:", 14, 48);
-        doc.setFont("helvetica", "normal");
-        doc.text("FENIX TELECOM SPA", 35, 48);
-
-        doc.setFont("helvetica", "bold");
-        doc.text("Atte. Sr(a).:", 14, 54);
-        doc.setFont("helvetica", "normal");
-        doc.text("NELSON BARRA", 35, 54);
-
-        doc.setFont("helvetica", "bold");
-        doc.text("Rut:", 14, 60);
-        doc.setFont("helvetica", "normal");
-        doc.text("78.206.142-9", 35, 60);
-
-        doc.setFont("helvetica", "bold");
-        doc.text("Dirección:", 14, 66);
-        doc.setFont("helvetica", "normal");
-        doc.text("BANDERA 529 543", 35, 66);
-
-        doc.setFont("helvetica", "bold");
-        doc.text("Giro:", 110, 48);
-        doc.setFont("helvetica", "normal");
-        doc.text("OTRAS ACTIVIDADES DE TELECOMUNICACIONES N.C.P.", 125, 48, { maxWidth: 75 });
-
-        doc.setFont("helvetica", "bold");
-        doc.text("Comuna / Ciudad:", 110, 60);
-        doc.setFont("helvetica", "normal");
-        doc.text("Santiago / Metropolitana", 140, 60);
-
-        doc.setFont("helvetica", "bold");
-        doc.text("Email:", 110, 66);
-        doc.setFont("helvetica", "normal");
-        doc.text("bnelsonhxxc@gmail.com", 125, 66);
-
-        doc.line(14, 75, 196, 75);
-
-        // Tabla de ítems con AutoTable
-        doc.autoTable({
-            startY: 80,
-            head: [['ITEM CANTIDAD', 'PRECIO UNIT.', '%DESCTO.', 'SUBTOTAL']],
-            body: itemsCotizacion,
-            theme: 'grid',
-            headStyles: { fillColor: [41, 128, 185] },
-            styles: { fontSize: 9 }
+    <!-- 4. Lógica completa en JavaScript -->
+    <script>
+        // Funcionalidad para seleccionar o deseleccionar todos los checkboxes
+        document.getElementById('seleccionarTodo').addEventListener('change', function(e) {
+            const checkboxes = document.querySelectorAll('.check-item');
+            checkboxes.forEach(chk => chk.checked = e.target.checked);
         });
 
-        // Totales al pie de la tabla
-        let finalY = doc.lastAutoTable.finalY + 10;
-        
-        doc.setFont("helvetica", "bold");
-        doc.text("CONDICIONES COMERCIALES:", 14, finalY);
-        doc.setFont("helvetica", "normal");
-        doc.text("Cotización válida por 10 días. Forma de pago: PAGADO AL CONTADO", 14, finalY + 6);
+        // Acción al hacer clic en el botón Generar Cotización
+        document.getElementById('btnGenerarCotizacion').addEventListener('click', function() {
+            const seleccionados = document.querySelectorAll('.check-item:checked');
+            
+            if (seleccionados.length === 0) {
+                alert('Por favor, selecciona al menos un registro con el tique para generar la cotización.');
+                return;
+            }
 
-        // Bloque de montos alineados a la derecha
-        let montoX = 140;
-        doc.text(`SUBTOTAL:`, montoX, finalY);
-        doc.text(`$ ${neto.toLocaleString('es-CL', {minimumFractionDigits: 2})}`, 180, finalY, { align: 'right' });
+            let itemsCotizacion = [];
+            let subtotalGeneral = 0;
 
-        doc.text(`I.V.A. (19%):`, montoX, finalY + 6);
-        doc.text(`$ ${iva.toLocaleString('es-CL', {minimumFractionDigits: 2})}`, 180, finalY + 6, { align: 'right' });
+            // Recorrer únicamente los elementos tiqueados
+            seleccionados.forEach(chk => {
+                const cantidad = parseFloat(chk.dataset.cant);
+                const precioUnit = parseFloat(chk.dataset.precio);
+                const subtotal = cantidad * precioUnit;
+                
+                itemsCotizacion.push([
+                    chk.dataset.desc,
+                    cantidad.toFixed(2).replace('.', ','),
+                    `$ ${precioUnit.toLocaleString('es-CL', {minimumFractionDigits: 2})}`,
+                    "0,00",
+                    `$ ${subtotal.toLocaleString('es-CL', {minimumFractionDigits: 2})}`
+                ]);
 
-        doc.setFont("helvetica", "bold");
-        doc.text(`TOTAL:`, montoX, finalY + 12);
-        doc.text(`$ ${total.toLocaleString('es-CL', {minimumFractionDigits: 2})}`, 180, finalY + 12, { align: 'right' });
+                subtotalGeneral += subtotal;
+            });
 
-        // Descargar PDF
-        doc.save("Cotizacion_Fonoip_1471.pdf");
+            // Cálculos financieros (Chile - IVA 19%)
+            const neto = subtotalGeneral;
+            const iva = neto * 0.19;
+            const total = neto + iva;
 
-    } catch (error) {
-        console.error("Error generando el PDF:", error);
-        alert("Ocurrió un error al generar el PDF.");
-    }
-});
-</script>
+            // Inicializar jsPDF
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            try {
+                // --- ENCABEZADO EMPRESA (FONOIP SPA) ---
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(14);
+                doc.text("FONOIP SPA", 14, 20);
+                
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(9);
+                doc.text("R.U.T.: 76.104.754-K", 14, 25);
+                doc.text("Dirección: MOISES CHACON 46, El Monte - Metropolitana", 14, 30);
+                doc.text("Telefono: 229479000 | E-mail: facturacion@fonoip.com", 14, 35);
+
+                // --- DATOS DEL DOCUMENTO (Derecha) ---
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(12);
+                doc.text("COTIZACIÓN N° 1471", 140, 20);
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(9);
+                doc.text("Fecha: " + new Date().toLocaleDateString('es-CL'), 140, 26);
+                doc.text("Validez: 10 día(s)", 140, 31);
+
+                // Línea divisoria
+                doc.setLineWidth(0.3);
+                doc.line(14, 40, 196, 40);
+
+                // --- DATOS DEL CLIENTE ---
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(9);
+                doc.text("Señores :", 14, 47);
+                doc.setFont("helvetica", "normal");
+                doc.text("FENIX TELECOM SPA", 35, 47);
+
+                doc.setFont("helvetica", "bold");
+                doc.text("Atte. Sr(a). :", 14, 53);
+                doc.setFont("helvetica", "normal");
+                doc.text("NELSON BARRA", 35, 53);
+
+                doc.setFont("helvetica", "bold");
+                doc.text("Rut :", 14, 59);
+                doc.setFont("helvetica", "normal");
+                doc.text("78.206.142-9", 35, 59);
+
+                doc.setFont("helvetica", "bold");
+                doc.text("Dirección :", 14, 65);
+                doc.setFont("helvetica", "normal");
+                doc.text("BANDERA 529 543", 35, 65);
+
+                doc.setFont("helvetica", "bold");
+                doc.text("Giro :", 110, 47);
+                doc.setFont("helvetica", "normal");
+                doc.text("OTRAS ACTIVIDADES DE TELECOMUNICACIONES N.C.P.", 125, 47, { maxWidth: 75 });
+
+                doc.setFont("helvetica", "bold");
+                doc.text("Comuna :", 110, 59);
+                doc.setFont("helvetica", "normal");
+                doc.text("Santiago", 130, 59);
+
+                doc.setFont("helvetica", "bold");
+                doc.text("Teléfono :", 110, 65);
+                doc.setFont("helvetica", "normal");
+                doc.text("999755640", 130, 65);
+
+                doc.setFont("helvetica", "bold");
+                doc.text("Email :", 110, 71);
+                doc.setFont("helvetica", "normal");
+                doc.text("bnelsonhxxc@gmail.com", 125, 71);
+
+                doc.line(14, 77, 196, 77);
+
+                // --- TABLA DE ITEMS SELECCIONADOS ---
+                doc.autoTable({
+                    startY: 82,
+                    head: [['ITEM / DESCRIPCIÓN', 'CANTIDAD', 'PRECIO UNIT.', '%DESCTO.', 'SUBTOTAL']],
+                    body: itemsCotizacion,
+                    theme: 'grid',
+                    headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255] },
+                    styles: { fontSize: 8 }
+                });
+
+                // --- CONDICIONES Y TOTALES AL PIE ---
+                let finalY = doc.lastAutoTable.finalY + 10;
+                
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(8);
+                doc.text("CONDICIONES COMERCIALES:", 14, finalY);
+                doc.setFont("helvetica", "normal");
+                doc.text("Cotización válida por 10 día(s).", 14, finalY + 5);
+                doc.text("Valores dados en Moneda CLP (Peso chileno)", 14, finalY + 10);
+                doc.text("Forma de pago: PAGADO AL CONTADO", 14, finalY + 15);
+
+                // Montos alineados a la derecha
+                let montoX = 135;
+                doc.text("SUBTOTAL", montoX, finalY);
+                doc.text(`$ ${neto.toLocaleString('es-CL', {minimumFractionDigits: 2})}`, 196, finalY, { align: 'right' });
+
+                doc.text("DCTO 0,00 %", montoX, finalY + 5);
+                doc.text("$ 0,00", 196, finalY + 5, { align: 'right' });
+
+                doc.text("NETO", montoX, finalY + 10);
+                doc.text(`$ ${neto.toLocaleString('es-CL', {minimumFractionDigits: 2})}`, 196, finalY + 10, { align: 'right' });
+
+                doc.text("I.V.A.", montoX, finalY + 15);
+                doc.text(`$ ${iva.toLocaleString('es-CL', {minimumFractionDigits: 2})}`, 196, finalY + 15, { align: 'right' });
+
+                doc.setFont("helvetica", "bold");
+                doc.text("TOTAL", montoX, finalY + 20);
+                doc.text(`$ ${total.toLocaleString('es-CL', {minimumFractionDigits: 2})}`, 196, finalY + 20, { align: 'right' });
+
+                // Guardar y descargar el PDF con el nombre correspondiente
+                doc.save("Cotizacion_Fonoip_1471.pdf");
+
+            } catch (error) {
+                console.error("Error al generar el PDF:", error);
+                alert("Hubo un error al procesar el archivo PDF.");
+            }
+        });
+    </script>
+</body>
+</html>
