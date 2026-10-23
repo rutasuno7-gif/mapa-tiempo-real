@@ -298,7 +298,7 @@
             checkboxes.forEach(chk => chk.checked = e.target.checked);
         });
 
-        // Lógica del botón Generar Cotización en PDF (Formato BRTUR Chile)
+        // Lógica del botón Generar Cotización en PDF (Formato BRTUR Chile limpio)
         document.getElementById('btnGenerarCotizacion').addEventListener('click', () => {
             const seleccionados = document.querySelectorAll('.check-item:checked');
             if (seleccionados.length === 0) {
@@ -313,14 +313,14 @@
                 const idRuta = chk.dataset.id;
                 const datosRuta = todasLasRutasData[idRuta];
                 if (datosRuta) {
-                    // Detalle solicitado: Pasajero/Conductor, Dirección inicio, término y kilómetros
                     const descripcion = `Pasajero/Ruta: ${idRuta}\nInicio: ${datosRuta.origen}\nTérmino: ${datosRuta.destino}\nDistancia: ${datosRuta.distancia}`;
-                    const valorServicio = datosRuta.tarifaNumerica || 0;
+                    const valorServicio = Number(datosRuta.tarifaNumerica) || 0;
                     
                     itemsCotizacion.push([
                         descripcion,
-                        "Viaje comercial",
+                        "1",
                         `$ ${valorServicio.toLocaleString('es-CL', {minimumFractionDigits: 2})}`,
+                        "0,00 %",
                         `$ ${valorServicio.toLocaleString('es-CL', {minimumFractionDigits: 2})}`
                     ]);
 
@@ -336,77 +336,30 @@
             const doc = new jsPDF();
 
             try {
-                // Encabezado BRTUR Chile
+                // Encabezado BRTUR Chile (Con correo correcto y sin datos de cliente)
                 doc.setFont("helvetica", "bold");
                 doc.setFontSize(14);
                 doc.text("BRTUR CHILE", 14, 20);
                 
                 doc.setFont("helvetica", "normal");
                 doc.setFontSize(9);
-                doc.text("R.U.T.: 76.XXX.XXX-X", 14, 25); // Ajusta tu RUT si es necesario
+                doc.text("R.U.T.: 76.XXX.XXX-X", 14, 25);
                 doc.text("Dirección: Santiago - Chile", 14, 30);
-                doc.text("E-mail: contacto@brturchile.com.br", 14, 35);
+                doc.text("E-mail: bbbrturchile@gmail.com", 14, 35);
 
-                // Documento info (Derecha)
-                doc.setFont("helvetica", "bold");
-                doc.setFontSize(12);
-                doc.text("COTIZACIÓN N° 1471", 135, 20);
+                // Fecha y validez (Derecha)
                 doc.setFont("helvetica", "normal");
                 doc.setFontSize(9);
-                doc.text("Fecha: " + new Date().toLocaleDateString('es-CL'), 135, 26);
-                doc.text("Validez: 10 día(s)", 135, 31);
+                doc.text("Fecha: " + new Date().toLocaleDateString('es-CL'), 135, 20);
+                doc.text("Validez: 10 día(s)", 135, 25);
 
                 doc.setLineWidth(0.3);
-                doc.line(14, 40, 196, 40);
+                doc.line(14, 42, 196, 42);
 
-                // Datos del cliente
-                doc.setFont("helvetica", "bold");
-                doc.setFontSize(9);
-                doc.text("Señores :", 14, 47);
-                doc.setFont("helvetica", "normal");
-                doc.text("FENIX TELECOM SPA", 35, 47);
-
-                doc.setFont("helvetica", "bold");
-                doc.text("Atte. Sr(a). :", 14, 53);
-                doc.setFont("helvetica", "normal");
-                doc.text("NELSON BARRA", 35, 53);
-
-                doc.setFont("helvetica", "bold");
-                doc.text("Rut :", 14, 59);
-                doc.setFont("helvetica", "normal");
-                doc.text("78.206.142-9", 35, 59);
-
-                doc.setFont("helvetica", "bold");
-                doc.text("Dirección :", 14, 65);
-                doc.setFont("helvetica", "normal");
-                doc.text("BANDERA 529 543", 35, 65);
-
-                doc.setFont("helvetica", "bold");
-                doc.text("Giro :", 110, 47);
-                doc.setFont("helvetica", "normal");
-                doc.text("OTRAS ACTIVIDADES DE TELECOMUNICACIONES N.C.P.", 125, 47, { maxWidth: 75 });
-
-                doc.setFont("helvetica", "bold");
-                doc.text("Comuna :", 110, 59);
-                doc.setFont("helvetica", "normal");
-                doc.text("Santiago", 130, 59);
-
-                doc.setFont("helvetica", "bold");
-                doc.text("Teléfono :", 110, 65);
-                doc.setFont("helvetica", "normal");
-                doc.text("999755640", 130, 65);
-
-                doc.setFont("helvetica", "bold");
-                doc.text("Email :", 110, 71);
-                doc.setFont("helvetica", "normal");
-                doc.text("bnelsonhxxc@gmail.com", 125, 71);
-
-                doc.line(14, 77, 196, 77);
-
-                // Tabla de ítems con AutoTable (Sin % Descuento, indicando 'Viaje comercial' y valor del servicio)
+                // Tabla de ítems con AutoTable (Incluyendo % Descuento)
                 doc.autoTable({
-                    startY: 82,
-                    head: [['ITEM / RECORRIDO', 'CANTIDAD', 'VALOR SERVICIO', 'SUBTOTAL']],
+                    startY: 48,
+                    head: [['ITEM / RECORRIDO', 'CANTIDAD', 'VALOR SERVICIO', '% DESCTO.', 'SUBTOTAL']],
                     body: itemsCotizacion,
                     theme: 'grid',
                     headStyles: { fillColor: [41, 128, 185] },
@@ -423,6 +376,7 @@
                 doc.text("Valores dados en Moneda CLP (Peso chileno)", 14, finalY + 10);
                 doc.text("Forma de pago: PAGADO AL CONTADO", 14, finalY + 15);
 
+                // Totales y montos correctos alineados a la derecha
                 let montoX = 135;
                 doc.text("SUBTOTAL", montoX, finalY);
                 doc.text(`$ ${neto.toLocaleString('es-CL', {minimumFractionDigits: 2})}`, 196, finalY, { align: 'right' });
