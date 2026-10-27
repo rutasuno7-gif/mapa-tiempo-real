@@ -29,9 +29,55 @@
         th { background: #f8f9fa; }
         .login-box { display: flex; gap: 10px; width: 100%; max-width: 400px; margin-top: 5px; }
         .hint { font-size: 12px; color: #666; width: 100%; margin-top: -5px; }
+
+        /* Estilos para el Cargador (Spinner / Procesando) */
+        #loadingOverlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        .loading-card {
+            background: white;
+            padding: 25px 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+        .spinner {
+            width: 45px;
+            height: 45px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #2980b9;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-text {
+            font-size: 15px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
     </style>
 </head>
 <body>
+
+    <!-- Cuadro superpuesto de Procesando -->
+    <div id="loadingOverlay">
+        <div class="loading-card">
+            <div class="spinner"></div>
+            <div class="loading-text">Buscando dirección ingresada...</div>
+        </div>
+    </div>
 
     <header>
         <h2>Panel de Administración - BRTUR Chile</h2>
@@ -200,39 +246,49 @@
                 return;
             }
 
-            alert("Buscando coordenadas y calculando valores...");
-            const coordOrigen = await obtenerCoordenadas(origenStr);
-            const coordDestino = await obtenerCoordenadas(destinoStr);
+            // Mostrar el círculo de procesando
+            document.getElementById('loadingOverlay').style.display = 'flex';
 
-            if (!coordOrigen || !coordDestino) {
-                alert("No se pudieron ubicar una o ambas direcciones. Intenta ingresar la comuna.");
-                return;
+            try {
+                const coordOrigen = await obtenerCoordenadas(origenStr);
+                const coordDestino = await obtenerCoordenadas(destinoStr);
+
+                if (!coordOrigen || !coordDestino) {
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                    alert("No se pudieron ubicar una o ambas direcciones. Intenta ingresar la comuna.");
+                    return;
+                }
+
+                const calculo = await calcularRutaYCombustible(coordOrigen.lat, coordOrigen.lng, coordDestino.lat, coordDestino.lng, tipoCombustible, valorKm);
+
+                set(ref(db, 'viajes/' + viajeId), {
+                    origen: origenStr, 
+                    destino: destinoStr, 
+                    conductor: conductor || "Sin asignar",
+                    origenLat: coordOrigen.lat, 
+                    origenLng: coordOrigen.lng, 
+                    destLat: coordDestino.lat, 
+                    destLng: coordDestino.lng, 
+                    distancia: calculo.distanciaText,
+                    distanciaNum: calculo.distanciaNumerica,
+                    combustible: calculo.costoText,
+                    tarifaKmTotal: calculo.tarifaKmText,
+                    tarifaNumerica: Number(calculo.valorNumericoTarifa) || 0,
+                    valorKmInputUsado: parseFloat(valorKm) || 0,
+                    estado: "Asignado"
+                }).then(() => {
+                    // Ocultar el círculo de procesando
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                    alert(`¡Ruta ${viajeId} creada con éxito!\nDistancia: ${calculo.distanciaText}\nTarifa por Km: ${calculo.tarifaKmText}`);
+                    document.getElementById('adminViajeId').value = '';
+                    document.getElementById('adminOrigen').value = '';
+                    document.getElementById('adminDestino').value = '';
+                    document.getElementById('adminConductor').value = '';
+                });
+            } catch (error) {
+                document.getElementById('loadingOverlay').style.display = 'none';
+                alert("Ocurrió un error al procesar la ruta.");
             }
-
-            const calculo = await calcularRutaYCombustible(coordOrigen.lat, coordOrigen.lng, coordDestino.lat, coordDestino.lng, tipoCombustible, valorKm);
-
-            set(ref(db, 'viajes/' + viajeId), {
-                origen: origenStr, 
-                destino: destinoStr, 
-                conductor: conductor || "Sin asignar",
-                origenLat: coordOrigen.lat, 
-                origenLng: coordOrigen.lng, 
-                destLat: coordDestino.lat, 
-                destLng: coordDestino.lng, 
-                distancia: calculo.distanciaText,
-                distanciaNum: calculo.distanciaNumerica,
-                combustible: calculo.costoText,
-                tarifaKmTotal: calculo.tarifaKmText,
-                tarifaNumerica: Number(calculo.valorNumericoTarifa) || 0,
-                valorKmInputUsado: parseFloat(valorKm) || 0,
-                estado: "Asignado"
-            }).then(() => {
-                alert(`¡Ruta ${viajeId} creada con éxito!\nDistancia: ${calculo.distanciaText}\nTarifa por Km: ${calculo.tarifaKmText}`);
-                document.getElementById('adminViajeId').value = '';
-                document.getElementById('adminOrigen').value = '';
-                document.getElementById('adminDestino').value = '';
-                document.getElementById('adminConductor').value = '';
-            });
         });
 
         window.eliminarRuta = function(viajeId) {
